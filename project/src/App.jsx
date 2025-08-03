@@ -16,6 +16,7 @@ import NotificationManagement from './components/admin/NotificationManagement';
 import PhotoGallery from './components/admin/PhotoGallery';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import Register from './components/auth/Register';
+import Timetable from "./pages/Timetable";
 
 function App() {
   return (
@@ -26,61 +27,77 @@ function App() {
           toastOptions={{
             duration: 4000,
             style: {
-              background: '#363636',
-              color: '#fff',
+              background: "#363636",
+              color: "#fff",
             },
           }}
         />
-        
+
         <Routes>
           {/* Public Routes */}
-          <Route path="/" element={
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-grow">
-                <Home />
-              </main>
-              <Footer />
-            </div>
-          } />
-          <Route path="/about" element={
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-grow">
-                <About />
-              </main>
-              <Footer />
-            </div>
-          } />
-          <Route path="/contact" element={
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-grow">
-                <Contact />
-              </main>
-              <Footer />
-            </div>
-          } />
-          <Route path="/gallery" element={
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <main className="flex-grow">
-                <Gallery />
-              </main>
-              <Footer />
-            </div>
-          } />
+          <Route
+            path="/"
+            element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  <Home />
+                </main>
+                <Footer />
+              </div>
+            }
+          />
+          <Route
+            path="/about"
+            element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  <About />
+                </main>
+                <Footer />
+              </div>
+            }
+          />
+          <Route
+            path="/contact"
+            element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  <Contact />
+                </main>
+                <Footer />
+              </div>
+            }
+          />
+          <Route
+            path="/gallery"
+            element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  <Gallery />
+                </main>
+                <Footer />
+              </div>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          
+
           {/* Admin Routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentManagement />} />
               <Route path="teachers" element={<TeacherManagement />} />
-              <Route path="notifications" element={<NotificationManagement />} />
+              <Route
+                path="notifications"
+                element={<NotificationManagement />}
+              />
               <Route path="gallery" element={<PhotoGallery />} />
+              <Route path="timetable" element={<Timetable />} />
             </Route>
           </Route>
         </Routes>
