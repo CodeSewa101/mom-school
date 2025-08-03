@@ -28,13 +28,11 @@ export default function Gallery() {
 
   const categories = [
     { value: 'all', label: '📷 All Events', emoji: '📷' },
-    { value: 'academic', label: '📚 Academic Events', emoji: '📚' },
-    { value: 'sports', label: '🏆 Sports & Competitions', emoji: '🏆' },
-    { value: 'cultural', label: '🎨 Cultural Events', emoji: '🎨' },
-    { value: 'workshops', label: '🧑‍🏫 Workshops & Training', emoji: '🧑‍🏫' },
-    { value: 'campus', label: '🌿 Campus & Environment', emoji: '🌿' },
-    { value: 'graduation', label: '🎓 Graduation Day', emoji: '🎓' },
-    { value: 'annual', label: '🎭 Annual Function', emoji: '🎭' }
+    { value: 'events', label: '🎉 Events', emoji: '🎉' },
+    { value: 'memories', label: '📸 Memories', emoji: '📸' },
+    { value: 'sports', label: '⚽ Sports', emoji: '⚽' },
+    { value: 'achievement', label: '🏅 Achievement', emoji: '🏅' },
+    { value: 'others', label: '📷 Others', emoji: '📷' }
   ];
 
   useEffect(() => {

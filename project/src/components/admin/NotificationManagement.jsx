@@ -1,25 +1,11 @@
 import { useState, useEffect } from 'react';
 import { 
-  Bell, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye,
-  EyeOff,
-  AlertCircle,
-  Info,
-  CheckCircle,
-  XCircle
+  Bell, Plus, Edit, Trash2, Eye, EyeOff, 
+  AlertCircle, Info, CheckCircle, XCircle 
 } from 'lucide-react';
 import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  orderBy 
+  collection, getDocs, addDoc, updateDoc, 
+  deleteDoc, doc, query, orderBy 
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import toast from 'react-hot-toast';
@@ -181,11 +167,11 @@ export default function NotificationManagement() {
 
   const getPriorityColor = (priority) => {
     switch (priority) {
-      case 'urgent': return 'text-red-600 bg-red-100';
-      case 'high': return 'text-orange-600 bg-orange-100';
-      case 'medium': return 'text-blue-600 bg-blue-100';
-      case 'low': return 'text-gray-600 bg-gray-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'urgent': return 'bg-red-100 text-red-800';
+      case 'high': return 'bg-orange-100 text-orange-800';
+      case 'medium': return 'bg-blue-100 text-blue-800';
+      case 'low': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 

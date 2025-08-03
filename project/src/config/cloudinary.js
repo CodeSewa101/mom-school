@@ -1,7 +1,8 @@
+// cloudinary.js
+
 export const cloudinaryConfig = {
-  cloudName: 'your-cloud-name',
-  uploadPreset: 'your-upload-preset',
-  apiKey: 'your-api-key'
+  cloudName: 'drwukyfj6',                      // ✅ Your Cloudinary cloud name
+  uploadPreset: 'School management',           // ✅ Your unsigned upload preset
 };
 
 export const uploadToCloudinary = async (file) => {
@@ -17,6 +18,10 @@ export const uploadToCloudinary = async (file) => {
         body: formData,
       }
     );
+
+    if (!response.ok) {
+      throw new Error('Upload failed');
+    }
 
     const data = await response.json();
     return data.secure_url;

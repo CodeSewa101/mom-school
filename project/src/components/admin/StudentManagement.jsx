@@ -9,7 +9,11 @@ import {
   Download,
   Filter,
   UserPlus,
-  GraduationCap
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight
 } from 'lucide-react';
 import { 
   collection, 
@@ -20,7 +24,10 @@ import {
   doc, 
   query, 
   orderBy,
-  where 
+  where,
+  limit,
+  startAfter,
+  getCountFromServer
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { uploadToCloudinary } from '../../config/cloudinary';
@@ -35,6 +42,28 @@ export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [uploading, setUploading] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [studentsPerPage] = useState(20);
+  const [totalStudents, setTotalStudents] = useState(0);
+  const [lastVisible, setLastVisible] = useState(null);
+  const [firstVisible, setFirstVisible] = useState(null);
+  const [snapshotDocs, setSnapshotDocs] = useState([]);
+
+  // Academic years from 2024-25 to 2030-31
+  const academicYears = [
+    '2024-25',
+    '2025-26', 
+    '2026-27',
+    '2027-28',
+    '2028-29',
+    '2029-30',
+    '2030-31'
+  ];
+
+  const classes = ['Pre-K', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const sections = ['A', 'B', 'C', 'D'];
 
   const [formData, setFormData] = useState({
     name: '',
@@ -48,16 +77,14 @@ export default function StudentManagement() {
     parentName: '',
     parentPhone: '',
     photo: '',
-    academicYear: '2024-25',
+    academicYear: academicYears[0],
     admissionDate: '',
     bloodGroup: '',
     emergencyContact: ''
   });
 
-  const classes = ['Pre-K', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
-  const sections = ['A', 'B', 'C', 'D'];
-
   useEffect(() => {
+    fetchTotalStudents();
     fetchStudents();
   }, []);
 
@@ -65,18 +92,56 @@ export default function StudentManagement() {
     filterStudents();
   }, [students, searchTerm, filterClass]);
 
-  const fetchStudents = async () => {
+  const fetchTotalStudents = async () => {
     try {
+      const coll = collection(db, 'students');
+      const snapshot = await getCountFromServer(coll);
+      setTotalStudents(snapshot.data().count);
+    } catch (error) {
+      console.error('Error fetching total students:', error);
+    }
+  };
+
+  const fetchStudents = async (pageDirection = 'first', lastDoc = null) => {
+    try {
+      setLoading(true);
+      let q;
       const studentsRef = collection(db, 'students');
-      const q = query(studentsRef, orderBy('name'));
-      const snapshot = await getDocs(q);
       
+      if (pageDirection === 'first') {
+        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
+        setCurrentPage(1);
+      } else if (pageDirection === 'next' && lastVisible) {
+        q = query(studentsRef, orderBy('name'), startAfter(lastVisible), limit(studentsPerPage));
+        setCurrentPage(prev => prev + 1);
+      } else if (pageDirection === 'prev' && firstVisible) {
+        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
+        setCurrentPage(prev => prev - 1);
+      } else if (pageDirection === 'last') {
+        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
+        setCurrentPage(Math.ceil(totalStudents / studentsPerPage));
+      } else {
+        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
+      }
+      
+      const snapshot = await getDocs(q);
       const studentData = [];
+      const docs = [];
+      
       snapshot.forEach((doc) => {
         studentData.push({ id: doc.id, ...doc.data() });
+        docs.push(doc);
       });
       
       setStudents(studentData);
+      setFilteredStudents(studentData);
+      setSnapshotDocs(docs);
+      
+      if (docs.length > 0) {
+        setFirstVisible(docs[0]);
+        setLastVisible(docs[docs.length - 1]);
+      }
+      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -101,7 +166,10 @@ export default function StudentManagement() {
     }
 
     setFilteredStudents(filtered);
+    setCurrentPage(1);
   };
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -152,6 +220,7 @@ export default function StudentManagement() {
       
       resetForm();
       fetchStudents();
+      fetchTotalStudents();
     } catch (error) {
       console.error('Error saving student:', error);
       toast.error('Failed to save student');
@@ -171,6 +240,7 @@ export default function StudentManagement() {
       await deleteDoc(doc(db, 'students', studentId));
       toast.success('Student deleted successfully');
       fetchStudents();
+      fetchTotalStudents();
     } catch (error) {
       console.error('Error deleting student:', error);
       toast.error('Failed to delete student');
@@ -190,7 +260,7 @@ export default function StudentManagement() {
       parentName: '',
       parentPhone: '',
       photo: '',
-      academicYear: '2024-25',
+      academicYear: academicYears[0],
       admissionDate: '',
       bloodGroup: '',
       emergencyContact: ''
@@ -200,18 +270,31 @@ export default function StudentManagement() {
   };
 
   const promoteStudents = async () => {
-    if (!window.confirm('Are you sure you want to promote all students to the next class?')) return;
+    if (!window.confirm('Are you sure you want to promote all students to the next class and academic year?')) return;
     
     try {
       const batch = [];
       students.forEach(student => {
         const currentClass = parseInt(student.class);
+        const studentYearIndex = academicYears.indexOf(student.academicYear);
+        const updates = {
+          updatedAt: new Date()
+        };
+        
+        // Promote class if not already in the highest class (12)
         if (currentClass < 12) {
+          updates.class = (currentClass + 1).toString();
+        }
+        
+        // Promote academic year if not already at the last year
+        if (studentYearIndex < academicYears.length - 1) {
+          updates.academicYear = academicYears[studentYearIndex + 1];
+        }
+        
+        // Only update if either class or year was promoted
+        if (Object.keys(updates).length > 1) {
           batch.push(
-            updateDoc(doc(db, 'students', student.id), {
-              class: (currentClass + 1).toString(),
-              updatedAt: new Date()
-            })
+            updateDoc(doc(db, 'students', student.id), updates)
           );
         }
       });
@@ -237,6 +320,12 @@ export default function StudentManagement() {
       </div>
     );
   }
+
+  // Pagination calculations
+  const indexOfLastStudent = currentPage * studentsPerPage;
+  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
+  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
+  const totalFilteredPages = Math.ceil(filteredStudents.length / studentsPerPage);
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
@@ -289,7 +378,7 @@ export default function StudentManagement() {
               ))}
             </select>
             <div className="text-sm text-gray-600 flex items-center">
-              Total Students: <span className="font-semibold ml-1">{filteredStudents.length}</span>
+              Showing {filteredStudents.length > 0 ? indexOfFirstStudent + 1 : 0}-{Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} students
             </div>
           </div>
         </div>
@@ -310,6 +399,9 @@ export default function StudentManagement() {
                     Roll Number
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Academic Year
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -321,59 +413,137 @@ export default function StudentManagement() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredStudents.map((student) => (
-                  <tr key={student.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <img
-                            className="h-10 w-10 rounded-full object-cover"
-                            src={student.photo || 'https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100'}
-                            alt={student.name}
-                          />
+                {currentStudents.length > 0 ? (
+                  currentStudents.map((student) => (
+                    <tr key={student.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="flex-shrink-0 h-10 w-10">
+                            <img
+                              className="h-10 w-10 rounded-full object-cover"
+                              src={student.photo || 'https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100'}
+                              alt={student.name}
+                            />
+                          </div>
+                          <div className="ml-4">
+                            <div className="text-sm font-medium text-gray-900">{student.name}</div>
+                            <div className="text-sm text-gray-500">{student.email}</div>
+                          </div>
                         </div>
-                        <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{student.name}</div>
-                          <div className="text-sm text-gray-500">{student.email}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">Class {student.class}</div>
+                        <div className="text-sm text-gray-500">Section {student.section}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {student.rollNumber}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {student.academicYear}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        {student.phone}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{student.parentName}</div>
+                        <div className="text-sm text-gray-500">{student.parentPhone}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <button
+                            onClick={() => handleEdit(student)}
+                            className="text-blue-600 hover:text-blue-900"
+                          >
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(student.id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">Class {student.class}</div>
-                      <div className="text-sm text-gray-500">Section {student.section}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {student.rollNumber}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                      {student.phone}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{student.parentName}</div>
-                      <div className="text-sm text-gray-500">{student.parentPhone}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <button
-                          onClick={() => handleEdit(student)}
-                          className="text-blue-600 hover:text-blue-900"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(student.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
+                      No students found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
         </div>
+
+        {/* Pagination */}
+        {filteredStudents.length > studentsPerPage && (
+          <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-lg shadow">
+            <div className="text-sm text-gray-700">
+              Showing <span className="font-medium">{indexOfFirstStudent + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(indexOfLastStudent, filteredStudents.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredStudents.length}</span> results
+            </div>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => paginate(1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronsLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => paginate(currentPage - 1)}
+                disabled={currentPage === 1}
+                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              
+              {Array.from({ length: Math.min(5, totalFilteredPages) }, (_, i) => {
+                let pageNum;
+                if (totalFilteredPages <= 5) {
+                  pageNum = i + 1;
+                } else if (currentPage <= 3) {
+                  pageNum = i + 1;
+                } else if (currentPage >= totalFilteredPages - 2) {
+                  pageNum = totalFilteredPages - 4 + i;
+                } else {
+                  pageNum = currentPage - 2 + i;
+                }
+                
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => paginate(pageNum)}
+                    className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+              
+              <button
+                onClick={() => paginate(currentPage + 1)}
+                disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
+                className={`p-2 rounded-md ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => paginate(totalFilteredPages)}
+                disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
+                className={`p-2 rounded-md ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronsRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Add/Edit Modal */}
         {showAddModal && (
@@ -525,15 +695,19 @@ export default function StudentManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Academic Year
+                        Academic Year *
                       </label>
-                      <input
-                        type="text"
+                      <select
                         name="academicYear"
                         value={formData.academicYear}
                         onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      />
+                      >
+                        {academicYears.map(year => (
+                          <option key={year} value={year}>{year}</option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Parent Information */}
