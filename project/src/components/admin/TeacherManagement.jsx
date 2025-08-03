@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react';
 import { 
-  Users, 
   Plus, 
   Search, 
   Edit, 
   Trash2, 
   Upload,
-  BookOpen,
-  Mail,
-  Phone
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 import { 
   collection, 
@@ -32,6 +32,9 @@ export default function TeacherManagement() {
   const [editingTeacher, setEditingTeacher] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,12 +62,19 @@ export default function TeacherManagement() {
   const classes = ['Pre-K', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const departments = ['Primary', 'Secondary', 'Senior Secondary', 'Administration'];
 
+  // Pagination calculations
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredTeachers.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage);
+
   useEffect(() => {
     fetchTeachers();
   }, []);
 
   useEffect(() => {
     filterTeachers();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [teachers, searchTerm]);
 
   const fetchTeachers = async () => {
@@ -91,17 +101,54 @@ export default function TeacherManagement() {
     let filtered = teachers;
 
     if (searchTerm) {
-      filtered = filtered.filter(teacher =>
-        teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        teacher.subjects.some(subject => 
-          subject.toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      );
+      filtered = filtered.filter((teacher) => {
+        return (
+          teacher.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          teacher.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          teacher.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (teacher.subjects && teacher.subjects.some((subject) => {
+            return subject.toLowerCase().includes(searchTerm.toLowerCase());
+          }))
+        );
+      });
     }
 
     setFilteredTeachers(filtered);
+  };
+
+  const requestSort = (key) => {
+    let direction = 'asc';
+    if (sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc';
+    }
+    setSortConfig({ key, direction });
+  };
+
+  const sortedTeachers = [...filteredTeachers].sort((a, b) => {
+    if (a[sortConfig.key] < b[sortConfig.key]) {
+      return sortConfig.direction === 'asc' ? -1 : 1;
+    }
+    if (a[sortConfig.key] > b[sortConfig.key]) {
+      return sortConfig.direction === 'asc' ? 1 : -1;
+    }
+    return 0;
+  });
+
+  // Pagination functions
+  const nextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const prevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
+
+  const goToPage = (pageNumber) => {
+    setCurrentPage(pageNumber);
   };
 
   const handleInputChange = (e) => {
@@ -143,18 +190,26 @@ export default function TeacherManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    if (!formData.name || !formData.email || !formData.phone || !formData.employeeId) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
     try {
+      const teacherData = {
+        ...formData,
+        subjects: formData.subjects || [],
+        classes: formData.classes || [],
+        updatedAt: new Date()
+      };
+
       if (editingTeacher) {
-        await updateDoc(doc(db, 'teachers', editingTeacher.id), {
-          ...formData,
-          updatedAt: new Date()
-        });
+        await updateDoc(doc(db, 'teachers', editingTeacher.id), teacherData);
         toast.success('Teacher updated successfully');
       } else {
         await addDoc(collection(db, 'teachers'), {
-          ...formData,
-          createdAt: new Date(),
-          updatedAt: new Date()
+          ...teacherData,
+          createdAt: new Date()
         });
         toast.success('Teacher added successfully');
       }
@@ -169,7 +224,11 @@ export default function TeacherManagement() {
 
   const handleEdit = (teacher) => {
     setEditingTeacher(teacher);
-    setFormData(teacher);
+    setFormData({
+      ...teacher,
+      subjects: teacher.subjects || [],
+      classes: teacher.classes || []
+    });
     setShowAddModal(true);
   };
 
@@ -255,70 +314,150 @@ export default function TeacherManagement() {
           </div>
         </div>
 
-        {/* Teachers Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredTeachers.map((teacher) => (
-            <div key={teacher.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="p-6">
-                <div className="flex items-center space-x-4 mb-4">
-                  <img
-                    className="h-16 w-16 rounded-full object-cover"
-                    src={teacher.photo || 'https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100'}
-                    alt={teacher.name}
-                  />
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900">{teacher.name}</h3>
-                    <p className="text-sm text-gray-600">{teacher.employeeId}</p>
-                    <p className="text-sm text-blue-600">{teacher.department}</p>
-                  </div>
-                </div>
-
-                <div className="space-y-2 mb-4">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {teacher.email}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Phone className="h-4 w-4 mr-2" />
-                    {teacher.phone}
-                  </div>
-                  <div className="flex items-center text-sm text-gray-600">
-                    <BookOpen className="h-4 w-4 mr-2" />
-                    {teacher.subjects.join(', ')}
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <p className="text-sm text-gray-600 mb-1">Classes:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {teacher.classes.map((cls, index) => (
-                      <span
-                        key={index}
-                        className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+        {/* Teachers Table */}
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      type="button" 
+                      onClick={() => requestSort('name')}
+                      className="flex items-center"
+                    >
+                      Name
+                      {sortConfig.key === 'name' && (
+                        sortConfig.direction === 'asc' ? 
+                        <ChevronUp className="ml-1 h-4 w-4" /> : 
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      )}
+                    </button>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      type="button" 
+                      onClick={() => requestSort('employeeId')}
+                      className="flex items-center"
+                    >
+                      ID
+                      {sortConfig.key === 'employeeId' && (
+                        sortConfig.direction === 'asc' ? 
+                        <ChevronUp className="ml-1 h-4 w-4" /> : 
+                        <ChevronDown className="ml-1 h-4 w-4" />
+                      )}
+                    </button>
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Subjects
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Classes
+                  </th>
+                  <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {currentItems.map((teacher) => (
+                  <tr key={teacher.id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          <img
+                            className="h-10 w-10 rounded-full"
+                            src={teacher.photo || 'https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100'}
+                            alt={teacher.name}
+                          />
+                        </div>
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{teacher.name}</div>
+                          <div className="text-sm text-gray-500">{teacher.department}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {teacher.employeeId}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {teacher.email}
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-500">
+                      {teacher.subjects?.join(', ')}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-wrap gap-1">
+                        {teacher.classes?.map((cls, index) => (
+                          <span
+                            key={index}
+                            className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full"
+                          >
+                            {cls}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <button
+                        onClick={() => handleEdit(teacher)}
+                        className="text-blue-600 hover:text-blue-900 mr-4"
                       >
-                        {cls}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-end space-x-2">
-                  <button
-                    onClick={() => handleEdit(teacher)}
-                    className="text-blue-600 hover:text-blue-900 p-2"
-                  >
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(teacher.id)}
-                    className="text-red-600 hover:text-red-900 p-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(teacher.id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Pagination Controls */}
+          <div className="flex items-center justify-between px-6 py-3 bg-gray-50 border-t border-gray-200">
+            <div className="text-sm text-gray-700">
+              Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
+              <span className="font-medium">
+                {Math.min(indexOfLastItem, filteredTeachers.length)}
+              </span>{' '}
+              of <span className="font-medium">{filteredTeachers.length}</span> teachers
             </div>
-          ))}
+            <div className="flex space-x-2">
+              <button
+                onClick={prevPage}
+                disabled={currentPage === 1}
+                className={`px-3 py-1 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((number) => (
+                <button
+                  key={number}
+                  onClick={() => goToPage(number)}
+                  className={`px-3 py-1 rounded-md ${currentPage === number ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                >
+                  {number}
+                </button>
+              ))}
+              
+              <button
+                onClick={nextPage}
+                disabled={currentPage === totalPages}
+                className={`px-3 py-1 rounded-md ${currentPage === totalPages ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Add/Edit Modal */}
@@ -479,7 +618,7 @@ export default function TeacherManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Subjects *
+                        Subjects
                       </label>
                       <select
                         multiple
@@ -497,7 +636,7 @@ export default function TeacherManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Classes *
+                        Classes
                       </label>
                       <select
                         multiple
