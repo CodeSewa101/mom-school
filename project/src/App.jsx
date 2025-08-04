@@ -8,15 +8,17 @@ import About from './pages/About';
 import Contact from './pages/Contact';
 import Gallery from './pages/Gallery';
 import Login from './components/auth/Login';
+import Register from './components/auth/Register';
+import ProtectedRoute from './components/common/ProtectedRoute';
+
 import AdminLayout from './components/admin/AdminLayout';
 import AdminDashboard from './components/admin/AdminDashboard';
 import StudentManagement from './components/admin/StudentManagement';
 import TeacherManagement from './components/admin/TeacherManagement';
 import NotificationManagement from './components/admin/NotificationManagement';
 import PhotoGallery from './components/admin/PhotoGallery';
-import ProtectedRoute from './components/common/ProtectedRoute';
-import Register from './components/auth/Register';
-import Timetable from "./pages/Timetable";
+import Timetable from './pages/Timetable';
+import HomeworkPage from './pages/HomeworkPage'; // ✅ NEW
 
 function App() {
   return (
@@ -92,12 +94,10 @@ function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentManagement />} />
               <Route path="teachers" element={<TeacherManagement />} />
-              <Route
-                path="notifications"
-                element={<NotificationManagement />}
-              />
+              <Route path="notifications" element={<NotificationManagement />} />
               <Route path="gallery" element={<PhotoGallery />} />
               <Route path="timetable" element={<Timetable />} />
+              <Route path="homework" element={<HomeworkPage />} /> {/* ✅ Homework Route */}
             </Route>
           </Route>
         </Routes>
