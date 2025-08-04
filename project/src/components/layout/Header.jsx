@@ -1,7 +1,9 @@
-import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Menu, X, GraduationCap, User, LogOut } from 'lucide-react';
-import { useAuth } from '../../contexts/AuthContext';
+import { useState } from "react";
+import { Link, useLocation } from "react-router-dom";
+import { Menu, X, User, LogOut } from "lucide-react";
+import { useAuth } from "../../contexts/AuthContext";
+import logo from "../../image/mom-School.png";
+
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -12,25 +14,28 @@ export default function Header() {
     try {
       await logout();
     } catch (error) {
-      console.error('Failed to log out:', error);
+      console.error("Failed to log out:", error);
     }
   };
 
   const navItems = [
-    { name: 'Home', path: '/' },
-    { name: 'About', path: '/about' },
-    { name: 'Gallery', path: '/gallery' },
-    { name: 'Contact', path: '/contact' },
+    { name: "Home", path: "/" },
+    { name: "About", path: "/about" },
+    { name: "Gallery", path: "/gallery" },
+    { name: "Contact", path: "/contact" },
   ];
 
   return (
     <header className="bg-white shadow-md sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-16 pl-6">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">SchoolHub</span>
+          <Link to="/" className="flex items-center">
+            <img
+              src={logo}
+              alt="School of Excellency, Aska Alado"
+              className="h-16 object-contain" // Changed from h-12 to h-16 for larger size
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -40,13 +45,15 @@ export default function Header() {
                 key={item.name}
                 to={item.path}
                 className={`text-gray-600 hover:text-blue-600 transition-colors ${
-                  location.pathname === item.path ? 'text-blue-600 font-medium' : ''
+                  location.pathname === item.path
+                    ? "text-blue-600 font-medium"
+                    : ""
                 }`}
               >
                 {item.name}
               </Link>
             ))}
-            
+
             {currentUser ? (
               <div className="flex items-center space-x-4">
                 <Link
@@ -79,7 +86,11 @@ export default function Header() {
               onClick={() => setIsMenuOpen(!isMenuOpen)}
               className="text-gray-600 hover:text-gray-900"
             >
-              {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {isMenuOpen ? (
+                <X className="h-6 w-6" />
+              ) : (
+                <Menu className="h-6 w-6" />
+              )}
             </button>
           </div>
         </div>
@@ -93,14 +104,16 @@ export default function Header() {
                   key={item.name}
                   to={item.path}
                   className={`block px-3 py-2 text-gray-600 hover:text-blue-600 transition-colors ${
-                    location.pathname === item.path ? 'text-blue-600 font-medium' : ''
+                    location.pathname === item.path
+                      ? "text-blue-600 font-medium"
+                      : ""
                   }`}
                   onClick={() => setIsMenuOpen(false)}
                 >
                   {item.name}
                 </Link>
               ))}
-              
+
               {currentUser ? (
                 <div className="space-y-2 pt-2 border-t">
                   <Link
