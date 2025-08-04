@@ -93,7 +93,7 @@ export default function AdminDashboard() {
     },
     {
       title: 'Total Fees Collected',
-      value: `$${stats.totalFees.toLocaleString()}`,
+      value: `₹${stats.totalFees.toLocaleString('en-IN')}`,
       icon: DollarSign,
       color: 'bg-yellow-500',
       change: '+18%'

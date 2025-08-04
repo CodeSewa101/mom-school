@@ -1,8 +1,7 @@
-// cloudinary.js
-
+// config/cloudinary.js
 export const cloudinaryConfig = {
-  cloudName: 'drwukyfj6',                      // ✅ Your Cloudinary cloud name
-  uploadPreset: 'School management',           // ✅ Your unsigned upload preset
+  cloudName: 'drwukyfj6',
+  uploadPreset: 'School management',
 };
 
 export const uploadToCloudinary = async (file) => {
@@ -12,7 +11,7 @@ export const uploadToCloudinary = async (file) => {
 
   try {
     const response = await fetch(
-      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/image/upload`,
+      `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/upload`,
       {
         method: 'POST',
         body: formData,
@@ -24,7 +23,13 @@ export const uploadToCloudinary = async (file) => {
     }
 
     const data = await response.json();
-    return data.secure_url;
+    return {
+      url: data.secure_url,
+      publicId: data.public_id,
+      width: data.width,
+      height: data.height,
+      format: data.format
+    };
   } catch (error) {
     console.error('Error uploading to Cloudinary:', error);
     throw error;
