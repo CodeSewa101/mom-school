@@ -57,48 +57,50 @@ export default function AdminLayout() {
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
-      <div className={`fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
+      <div className={`fixed inset-y-0 left-0 z-50 w-20 lg:w-64 bg-indigo-700 shadow-lg transform ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0`}>
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-200">
+        <div className="flex items-center justify-between h-16 px-4 lg:px-6 border-b border-indigo-600">
           <div className="flex items-center space-x-2">
-            <GraduationCap className="h-8 w-8 text-blue-600" />
-            <span className="text-xl font-bold text-gray-900">Admin Panel</span>
+            <GraduationCap className="h-8 w-8 text-white" />
+            <span className="hidden lg:block text-xl font-bold text-white">Admin Panel</span>
           </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-500 hover:text-gray-700"
+            className="lg:hidden text-white hover:text-gray-200"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        <nav className="mt-6 px-3">
-          <div className="space-y-1">
+        <nav className="mt-6 px-2 lg:px-3">
+          <div className="space-y-2">
             {menuItems.map((item) => (
               <Link
                 key={item.name}
                 to={item.path}
-                className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+                className={`flex items-center p-3 lg:px-3 lg:py-2 rounded-lg transition-colors group ${
                   isActive(item.path)
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'text-indigo-200 hover:bg-indigo-600 hover:text-white'
                 }`}
                 onClick={() => setSidebarOpen(false)}
+                title={item.name}
               >
-                <item.icon className="mr-3 h-5 w-5" />
-                {item.name}
+                <item.icon className="h-6 w-6 mx-auto lg:mr-3 lg:ml-0" />
+                <span className="hidden lg:block text-sm font-medium">{item.name}</span>
               </Link>
             ))}
           </div>
 
-          <div className="mt-8 pt-6 border-t border-gray-200">
+          <div className="mt-8 pt-6 border-t border-indigo-600">
             <button
               onClick={handleLogout}
-              className="flex items-center w-full px-3 py-2 text-sm font-medium text-red-600 rounded-lg hover:bg-red-50 transition-colors"
+              className="flex items-center w-full p-3 lg:px-3 lg:py-2 text-red-200 rounded-lg hover:bg-indigo-600 hover:text-white transition-colors group"
+              title="Logout"
             >
-              <LogOut className="mr-3 h-5 w-5" />
-              Logout
+              <LogOut className="h-6 w-6 mx-auto lg:mr-3 lg:ml-0" />
+              <span className="hidden lg:block text-sm font-medium">Logout</span>
             </button>
           </div>
         </nav>
@@ -124,7 +126,7 @@ export default function AdminLayout() {
         </div>
 
         {/* Page Content */}
-        <main className="flex-1">
+        <main className="flex-1 p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
