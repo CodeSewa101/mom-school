@@ -19,6 +19,7 @@ import NotificationManagement from './components/admin/NotificationManagement';
 import PhotoGallery from './components/admin/PhotoGallery';
 import Timetable from './pages/Timetable';
 import HomeworkPage from './pages/HomeworkPage'; // ✅ NEW
+import AttendancePage from "./pages/AttendancePage"; 
 
 function App() {
   return (
@@ -94,10 +95,16 @@ function App() {
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentManagement />} />
               <Route path="teachers" element={<TeacherManagement />} />
-              <Route path="notifications" element={<NotificationManagement />} />
+              <Route
+                path="notifications"
+                element={<NotificationManagement />}
+              />
               <Route path="gallery" element={<PhotoGallery />} />
               <Route path="timetable" element={<Timetable />} />
-              <Route path="homework" element={<HomeworkPage />} /> {/* ✅ Homework Route */}
+              <Route path="homework" element={<HomeworkPage />} />{" "}
+              {/* ✅ Homework Route */}
+              <Route path="attendance" element={<AttendancePage />} />{" "}
+              {/* ✅ Added Attendance Route */}
             </Route>
           </Route>
         </Routes>
