@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
               <GraduationCap className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">SchoolHub</span>
+              <span className="text-xl font-bold">MOM SCHOLL OF EXCELLENCY</span>
             </div>
             <p className="text-gray-400 mb-4">
               Empowering education through innovative technology and dedicated teaching.
@@ -18,15 +18,15 @@ export default function Footer() {
             <div className="space-y-2 text-gray-400">
               <div className="flex items-center space-x-2">
                 <MapPin className="h-4 w-4" />
-                <span>123 Education Street, Learning City, LC 12345</span>
+                <span>Laxmi Bazar, Near Satya Narayan Temple, Aska.pin:761110</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Phone className="h-4 w-4" />
-                <span>+1 (555) 123-4567</span>
+                <span>(+91) 7205727976, 8658847497</span>
               </div>
               <div className="flex items-center space-x-2">
                 <Mail className="h-4 w-4" />
-                <span>info@schoolhub.edu</span>
+                <span>momschoolofexcellency@gmail.com</span>
               </div>
             </div>
           </div>
@@ -58,7 +58,7 @@ export default function Footer() {
         </div>
 
         <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-          <p>&copy; 2025 SchoolHub. All rights reserved. Built with ❤️ for education.</p>
+          <p>&copy; 2025 MOM SCHOOL OF EXCELLENCY. All rights reserved. Developed by <a href="https://codesewa.in" target="_blank" rel="noopener noreferrer">CodeSewa</a>.</p>
         </div>
       </div>
     </footer>
