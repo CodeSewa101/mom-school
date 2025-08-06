@@ -6,7 +6,7 @@ import {
   where,
   doc,
   setDoc,
-  serverTimestamp,
+  Timestamp,
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { useAuth } from "../contexts/AuthContext";
@@ -162,7 +162,7 @@ const AttendancePage = () => {
         }
       } catch (error) {
         console.error("Error fetching attendance:", error);
-        toast.error("Failed to load existing attendance");
+        toast.error("Failed to load existing attendance. Please check your permissions.");
       }
     };
 
@@ -202,6 +202,12 @@ const AttendancePage = () => {
       return;
     }
 
+    // Validate all records have status
+    if (attendanceRecords.some(record => !record.status)) {
+      toast.error("All students must have an attendance status");
+      return;
+    }
+
     setSubmitting(true);
     try {
       const attendanceData = {
@@ -211,21 +217,20 @@ const AttendancePage = () => {
         records: attendanceRecords,
         submittedBy: currentUser.uid,
         submittedName: currentUser.displayName || "Teacher",
-        submittedAt: serverTimestamp(),
+        submittedAt: Timestamp.now(),
         totalStudents: attendanceRecords.length,
         presentCount: attendanceRecords.filter(r => r.status === "present").length,
-        absentCount: attendanceRecords.filter(r => r.status === "absent").length
+        absentCount: attendanceRecords.filter(r => r.status === "absent").length,
+        lastUpdated: Timestamp.now()
       };
 
       const docId = `${date}-${classSelected}-${sectionSelected}`;
-      await setDoc(doc(db, "attendance", docId), attendanceData, {
-        merge: true,
-      });
+      await setDoc(doc(db, "attendance", docId), attendanceData);
 
       toast.success("Attendance recorded successfully!");
     } catch (error) {
       console.error("Error saving attendance:", error);
-      toast.error("Failed to save attendance");
+      toast.error(`Failed to save attendance: ${error.message}`);
     } finally {
       setSubmitting(false);
     }
@@ -329,7 +334,7 @@ const AttendancePage = () => {
               value={classSelected}
               onChange={(e) => {
                 setClassSelected(e.target.value);
-                setCurrentPage(1); // Reset to first page when class changes
+                setCurrentPage(1);
               }}
               className="p-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full text-sm md:text-base bg-white"
             >
@@ -351,7 +356,7 @@ const AttendancePage = () => {
               value={sectionSelected}
               onChange={(e) => {
                 setSectionSelected(e.target.value);
-                setCurrentPage(1); // Reset to first page when section changes
+                setCurrentPage(1);
               }}
               className="p-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full text-sm md:text-base bg-white"
             >
@@ -375,7 +380,7 @@ const AttendancePage = () => {
                 value={searchTerm}
                 onChange={(e) => {
                   setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset to first page when search changes
+                  setCurrentPage(1);
                 }}
                 className="pl-11 pr-4 py-2.5 w-full border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base bg-white"
               />
