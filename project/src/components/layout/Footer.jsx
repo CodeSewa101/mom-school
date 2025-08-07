@@ -9,7 +9,7 @@ export default function Footer() {
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-2 mb-4">
               <GraduationCap className="h-8 w-8 text-blue-400" />
-              <span className="text-xl font-bold">MOM SCHOLL OF EXCELLENCY</span>
+              <span className="text-xl font-bold">MOM SCHOOL OF EXCELLENCY</span>
             </div>
             <p className="text-gray-400 mb-4">
               Empowering education through innovative technology and dedicated teaching.

@@ -38,7 +38,7 @@ export default function Home() {
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-white">
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
-            Welcome to SchoolHub
+            Welcome to Mom School Of Excellency
           </h2>
           <p className="text-lg text-gray-600 max-w-3xl mx-auto mb-12">
             Where education meets innovation. We're committed to providing a nurturing environment 
@@ -92,7 +92,7 @@ export default function Home() {
             Join Our Educational Community
           </h2>
           <p className="text-lg text-gray-600 mb-8">
-            Discover how SchoolHub can help your child reach their full potential with our 
+            Discover how Mom School of Excellency can help your child reach their full potential with our 
             comprehensive educational programs and supportive learning environment.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
