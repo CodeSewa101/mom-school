@@ -29,7 +29,7 @@ export default function About() {
       {/* Hero Section */}
       <section className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-20 px-4 sm:px-6 lg:px-8">
         <div className="max-w-7xl mx-auto text-center">
-          <h1 className="text-4xl md:text-6xl font-bold mb-6">About SchoolHub</h1>
+          <h1 className="text-4xl md:text-6xl font-bold mb-6">About Mom School of Excellency</h1>
           <p className="text-xl md:text-2xl opacity-90 max-w-3xl mx-auto">
             Empowering minds, shaping futures, and building tomorrow's leaders through innovative education.
           </p>
@@ -43,7 +43,7 @@ export default function About() {
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Our Mission</h2>
               <p className="text-lg text-gray-600 mb-6">
-                At SchoolHub, we are dedicated to providing exceptional education that nurtures the whole child. 
+                At MOM SCHOOL OF EXCELLENCY, we are dedicated to providing exceptional education that nurtures the whole child. 
                 Our mission is to create an environment where students can discover their passions, develop their 
                 talents, and grow into confident, responsible global citizens.
               </p>
@@ -102,10 +102,13 @@ export default function About() {
             <div>
               <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">Our Story</h2>
               <p className="text-lg text-gray-600 mb-6">
-                Founded in 2010, SchoolHub began as a small educational institution with a big vision: 
-                to revolutionize education through technology and personalized learning. Over the years, 
-                we have grown into a leading educational institution known for our innovative approach 
-                and exceptional results.
+                The Pranab Educational Society is one nonprofit oriented organization which is working for last decade in the fields of Health, Education, livelihood and different social activities through meditative vibration.
+                 It was incepted in the year 2010 as an independent unit with an objective of imparting skill development & stress free environment for students through meditative vibration.
+                  The society has established a school namely “MOM SCHOOL OF EXCELLENCY” at Aska and is a Co-Ed school offering better education up to Standard VIII. 
+                  Apart from regular school curriculum, the students have been providing with unique opportunity to learn and imbibe the essence of the innovative learning model developed by our beloved Master Shri. Pranab Kumar Rath on weekend basis. 
+                  It has also a research unit namely MOM. The research organization has developed various technics about mind, memory, conscious living process through meditation and brings stress free education for students.
+                   Yet it proves to be immensely beneficial for the students of tender age in different ways, be it in developing their skills like growth of inner conscience, moral, ethical values. 
+                  It helps in transforming them into a better human being and stress-free in every respect through meditative vibration.
               </p>
               <p className="text-lg text-gray-600 mb-6">
                 Today, we serve over 500 students with a dedicated team of 50+ educators who are 

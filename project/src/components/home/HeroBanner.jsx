@@ -3,6 +3,10 @@ import { ChevronLeft, ChevronRight, Calendar, Gift } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { format, isToday } from 'date-fns';
+import banner1 from '../../image/banner1.jpg';
+import banner2 from '../../image/banner2.jpg';
+import banner3 from '../../image/banner3.jpg';
+
 
 export default function HeroBanner() {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -12,23 +16,23 @@ export default function HeroBanner() {
   const defaultBanners = [
     {
       id: 'banner1',
-      title: 'Welcome to SchoolHub',
+      title: 'A School with Heart & Vision',
       subtitle: 'Excellence in Education',
-      image: 'https://images.pexels.com/photos/207691/pexels-photo-207691.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      image:banner1,
       type: 'banner'
     },
     {
       id: 'banner2',
-      title: 'Nurturing Young Minds',
+      title: 'Every Child a Star, Every Dream a Journey',
       subtitle: 'Building Tomorrow\'s Leaders',
-      image: 'https://images.pexels.com/photos/1720186/pexels-photo-1720186.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      image:banner2,
       type: 'banner'
     },
     {
       id: 'banner3',
       title: 'Innovation in Learning',
-      subtitle: 'Modern Education for Modern World',
-      image: 'https://images.pexels.com/photos/159844/cellular-education-classroom-159844.jpeg?auto=compress&cs=tinysrgb&w=1200',
+      subtitle: 'Know Meditation, Know Life. No meditation, No Life.',
+      image:banner3,
       type: 'banner'
     }
   ];
@@ -110,7 +114,7 @@ export default function HeroBanner() {
             className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-black bg-opacity-40"></div>
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="absolute inset-0 flex items-center justify-center translate-y-[30%]">
             <div className="text-center text-white max-w-4xl px-4">
               <h1 className="text-4xl md:text-6xl font-bold mb-4 animate-fade-in">
                 {currentSlideData.title}
