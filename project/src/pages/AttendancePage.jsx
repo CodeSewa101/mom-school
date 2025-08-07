@@ -1,58 +1,62 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
-  collection,
-  getDocs,
-  query,
-  where,
-  doc,
-  setDoc,
-  serverTimestamp,
-} from "firebase/firestore";
-import { db } from "../config/firebase";
-import { useAuth } from "../contexts/AuthContext";
-import {
-  Check,
-  X,
+  CheckCircle2,
+  XCircle,
+  Search,
   Filter,
-  ChevronDown,
-  ChevronUp,
+  Calendar,
   Download,
   Upload,
-  Calendar,
-  User,
-  Hash,
-  Bookmark,
-  Search,
+  Clock,
+  UserCheck,
+  UserX,
+  Users,
+  ClipboardList,
+  Plus,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  Edit,
+  Eye,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight
 } from "lucide-react";
-import toast from "react-hot-toast";
-import { CSVLink } from "react-csv";
+import { format, parseISO, subDays, addDays, isSameDay } from "date-fns";
 
 const AttendancePage = () => {
-  const { currentUser } = useAuth();
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [classSelected, setClassSelected] = useState("");
-  const [sectionSelected, setSectionSelected] = useState("");
   const [students, setStudents] = useState([]);
   const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState("all");
-  const [showFilters, setShowFilters] = useState(false);
-  const [showBulkActions, setShowBulkActions] = useState(false);
+  const [filteredStudents, setFilteredStudents] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [recordsPerPage] = useState(20);
-  const [totalRecords, setTotalRecords] = useState(0);
+  const [selectedClass, setSelectedClass] = useState("");
+  const [selectedSection, setSelectedSection] = useState("");
+  const [selectedDate, setSelectedDate] = useState(
+    new Date().toISOString().substr(0, 10)
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newStudentName, setNewStudentName] = useState("");
+  const [isAddingStudent, setIsAddingStudent] = useState(false);
+  const [expandedStudent, setExpandedStudent] = useState(null);
+  const [editingStudent, setEditingStudent] = useState(null);
+  const [editFormData, setEditFormData] = useState({
+    name: "",
+    rollNo: "",
+    contact: "",
+  });
+  const [viewMode, setViewMode] = useState("mark"); // 'mark' or 'view'
+  const [viewStartDate, setViewStartDate] = useState(
+    new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().substr(0, 10)
+  );
+  const [viewEndDate, setViewEndDate] = useState(
+    new Date().toISOString().substr(0, 10)
+  );
 
+  // Class and section options
   const classes = [
-    "Pre-K",
-    "K",
+    "Nursery",
+    "LKG",
+    "UKG",
     "1",
     "2",
     "3",
@@ -63,805 +67,1002 @@ const AttendancePage = () => {
     "8",
     "9",
     "10",
-    "11",
-    "12",
   ];
   const sections = ["A", "B", "C", "D"];
 
-  const calculatePercentage = (count) => {
-    if (attendanceRecords.length === 0) return 0;
-    return Math.round((count / attendanceRecords.length) * 100);
-  };
-
   useEffect(() => {
     const fetchStudents = async () => {
-      if (!classSelected || !sectionSelected) {
-        setStudents([]);
-        setAttendanceRecords([]);
-        setLoading(false);
-        return;
-      }
-
-      setLoading(true);
       try {
-        const studentsRef = collection(db, "students");
-        const q = query(
-          studentsRef,
-          where("class", "==", classSelected),
-          where("section", "==", sectionSelected),
-          where("status", "==", "active")
+        setIsLoading(true);
+
+        // Try to load from localStorage first
+        const savedStudents = localStorage.getItem(
+          `students-${selectedClass}-${selectedSection}`
+        );
+        const savedAttendance = localStorage.getItem(
+          `attendance-${selectedClass}-${selectedSection}`
         );
 
-        const snapshot = await getDocs(q);
-        const studentData = snapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
+        if (savedStudents) {
+          setStudents(JSON.parse(savedStudents));
+          setFilteredStudents(JSON.parse(savedStudents));
+        } else {
+          // Mock data for demonstration if no saved data
+          const mockStudents =
+            selectedClass && selectedSection
+              ? Array.from({ length: 15 }, (_, i) => ({
+                  id: `${selectedClass}-${selectedSection}-${i + 1}`,
+                  name: `Student ${i + 1}`,
+                  rollNo: `${selectedClass}${selectedSection}${String(
+                    i + 1
+                  ).padStart(2, "0")}`,
+                  class: selectedClass,
+                  section: selectedSection,
+                  contact: `+1 (555) ${Math.floor(
+                    100 + Math.random() * 900
+                  )}-${Math.floor(1000 + Math.random() * 9000)}`,
+                  lastAttendance: format(
+                    new Date(
+                      Date.now() -
+                        Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
+                    ),
+                    "yyyy-MM-dd"
+                  ),
+                  attendanceRate: Math.floor(70 + Math.random() * 30),
+                }))
+              : [];
 
-        setStudents(studentData);
-        setTotalRecords(studentData.length);
-        
-        const initialRecords = studentData.map((student) => ({
-          studentId: student.id,
-          name: student.name,
-          rollNumber: student.rollNumber,
-          status: "present",
-          photo: student.photo,
-          admissionNo: student.admissionNo || "",
-          class: student.class,
-          section: student.section
-        }));
+          setStudents(mockStudents);
+          setFilteredStudents(mockStudents);
+        }
 
-        setAttendanceRecords(initialRecords);
-      } catch (error) {
-        console.error("Error fetching students:", error);
-        toast.error("Failed to load students");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStudents();
-  }, [classSelected, sectionSelected]);
-
-  useEffect(() => {
-    const fetchExistingAttendance = async () => {
-      if (!classSelected || !sectionSelected || !date || students.length === 0)
-        return;
-
-      try {
-        const attendanceRef = collection(db, "attendance");
-        const q = query(
-          attendanceRef,
-          where("date", "==", date),
-          where("class", "==", classSelected),
-          where("section", "==", sectionSelected)
-        );
-
-        const snapshot = await getDocs(q);
-        if (!snapshot.empty) {
-          const docData = snapshot.docs[0].data();
-          const mergedRecords = students.map((student) => {
-            const existingRecord = docData.records.find(
-              (r) => r.studentId === student.id
-            );
-            return (
-              existingRecord || {
-                studentId: student.id,
-                name: student.name,
-                rollNumber: student.rollNumber,
-                status: "present",
-                photo: student.photo,
-                admissionNo: student.admissionNo || "",
-                class: student.class,
-                section: student.section
-              }
-            );
-          });
-          setAttendanceRecords(mergedRecords);
+        if (savedAttendance) {
+          setAttendanceRecords(JSON.parse(savedAttendance));
+        } else {
+          setAttendanceRecords([]);
         }
       } catch (error) {
-        console.error("Error fetching attendance:", error);
-        toast.error("Failed to load existing attendance");
+        console.error("Error fetching data:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
-    fetchExistingAttendance();
-  }, [date, classSelected, sectionSelected, students]);
+    if (selectedClass && selectedSection) {
+      fetchStudents();
+    }
+  }, [selectedClass, selectedSection]);
 
-  const handleStatusChange = (studentId, status) => {
-    setAttendanceRecords((prevRecords) =>
-      prevRecords.map((record) =>
-        record.studentId === studentId ? { ...record, status } : record
-      )
+  useEffect(() => {
+    filterStudents();
+  }, [searchTerm, students]);
+
+  const filterStudents = () => {
+    let filtered = [...students];
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (student) =>
+          student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          student.rollNo.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    setFilteredStudents(filtered);
+  };
+
+  const handleNameChange = (studentId, newName) => {
+    const updatedStudents = students.map((student) =>
+      student.id === studentId ? { ...student, name: newName } : student
+    );
+    setStudents(updatedStudents);
+    setFilteredStudents(updatedStudents);
+  };
+
+  const saveStudents = () => {
+    localStorage.setItem(
+      `students-${selectedClass}-${selectedSection}`,
+      JSON.stringify(students)
+    );
+    alert("Student names saved successfully!");
+  };
+
+  const handleAttendanceChange = (studentId, status) => {
+    const existingRecordIndex = attendanceRecords.findIndex(
+      (record) => record.studentId === studentId && record.date === selectedDate
+    );
+
+    let updatedRecords;
+    if (existingRecordIndex >= 0) {
+      updatedRecords = [...attendanceRecords];
+      updatedRecords[existingRecordIndex].status = status;
+      updatedRecords[existingRecordIndex].timestamp = new Date().toISOString();
+    } else {
+      updatedRecords = [
+        ...attendanceRecords,
+        {
+          studentId,
+          date: selectedDate,
+          status,
+          timestamp: new Date().toISOString(),
+        },
+      ];
+    }
+
+    setAttendanceRecords(updatedRecords);
+    localStorage.setItem(
+      `attendance-${selectedClass}-${selectedSection}`,
+      JSON.stringify(updatedRecords)
     );
   };
 
-  const handleBulkStatusChange = (status) => {
-    setAttendanceRecords((prevRecords) =>
-      prevRecords.map((record) => ({ ...record, status }))
+  const getAttendanceStatus = (studentId, date = selectedDate) => {
+    const record = attendanceRecords.find(
+      (record) => record.studentId === studentId && record.date === date
     );
-    toast.success(`All students marked as ${status}`);
+    return record ? record.status : "";
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (!currentUser) {
-      toast.error("You must be logged in to submit attendance");
-      return;
-    }
-
-    if (!classSelected || !sectionSelected) {
-      toast.error("Please select both class and section");
-      return;
-    }
-
-    if (attendanceRecords.length === 0) {
-      toast.error("No students to submit attendance for");
-      return;
-    }
-
-    setSubmitting(true);
+  const handleSubmit = async () => {
+    setIsSubmitting(true);
     try {
-      const attendanceData = {
-        date,
-        class: classSelected,
-        section: sectionSelected,
-        records: attendanceRecords,
-        submittedBy: currentUser.uid,
-        submittedName: currentUser.displayName || "Teacher",
-        submittedAt: serverTimestamp(),
-        totalStudents: attendanceRecords.length,
-        presentCount: attendanceRecords.filter(r => r.status === "present").length,
-        absentCount: attendanceRecords.filter(r => r.status === "absent").length
-      };
-
-      const docId = `${date}-${classSelected}-${sectionSelected}`;
-      await setDoc(doc(db, "attendance", docId), attendanceData, {
-        merge: true,
-      });
-
-      toast.success("Attendance recorded successfully!");
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+      alert(
+        `Attendance submitted for Class ${selectedClass} Section ${selectedSection} on ${format(
+          parseISO(selectedDate),
+          "MMMM d, yyyy"
+        )}`
+      );
     } catch (error) {
-      console.error("Error saving attendance:", error);
-      toast.error("Failed to save attendance");
+      console.error("Error submitting attendance:", error);
+      alert("Failed to submit attendance");
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const prepareCSVData = () => {
-    return attendanceRecords.map((record) => ({
-      "Admission No": record.admissionNo || "",
-      "Roll No": record.rollNumber,
-      "Student Name": record.name,
-      Status: record.status.toUpperCase(),
-      Class: record.class,
-      Section: record.section,
-      Date: date,
-    }));
+  const addNewStudent = () => {
+    if (!newStudentName.trim()) return;
+
+    // Find the highest numeric part in existing roll numbers
+    const rollNoPattern = new RegExp(
+      `${selectedClass}${selectedSection}(\\d+)`
+    );
+    let maxRollNo = 0;
+
+    students.forEach((student) => {
+      const match = student.rollNo.match(rollNoPattern);
+      if (match && match[1]) {
+        const num = parseInt(match[1], 10);
+        if (num > maxRollNo) {
+          maxRollNo = num;
+        }
+      }
+    });
+
+    const newRollNoNum = maxRollNo + 1;
+    const newRollNo = `${selectedClass}${selectedSection}${String(
+      newRollNoNum
+    ).padStart(2, "0")}`;
+    const newId = `${selectedClass}-${selectedSection}-${newRollNoNum}`;
+
+    const newStudent = {
+      id: newId,
+      name: newStudentName.trim(),
+      rollNo: newRollNo,
+      class: selectedClass,
+      section: selectedSection,
+      contact: "",
+      lastAttendance: "",
+      attendanceRate: 0,
+    };
+
+    const updatedStudents = [...students, newStudent];
+    setStudents(updatedStudents);
+    setFilteredStudents(updatedStudents);
+    setNewStudentName("");
+    setIsAddingStudent(false);
+
+    // Save to localStorage
+    localStorage.setItem(
+      `students-${selectedClass}-${selectedSection}`,
+      JSON.stringify(updatedStudents)
+    );
   };
 
-  const filteredRecords = attendanceRecords
-    .filter((record) => filter === "all" || record.status === filter)
-    .filter(
-      (record) =>
-        searchTerm === "" ||
-        record.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        record.rollNumber.toString().includes(searchTerm) ||
-        (record.admissionNo &&
-          record.admissionNo.toString().includes(searchTerm))
+  const handleEditStudent = (student) => {
+    setEditingStudent(student.id);
+    setEditFormData({
+      name: student.name,
+      rollNo: student.rollNo,
+      contact: student.contact,
+    });
+  };
+
+  const handleEditFormChange = (e) => {
+    const { name, value } = e.target;
+    setEditFormData({
+      ...editFormData,
+      [name]: value,
+    });
+  };
+
+  const saveEditedStudent = () => {
+    const updatedStudents = students.map((student) =>
+      student.id === editingStudent
+        ? {
+            ...student,
+            name: editFormData.name,
+            rollNo: editFormData.rollNo,
+            contact: editFormData.contact,
+          }
+        : student
     );
 
-  // Pagination logic
-  const indexOfLastRecord = currentPage * recordsPerPage;
-  const indexOfFirstRecord = indexOfLastRecord - recordsPerPage;
-  const currentRecords = filteredRecords.slice(indexOfFirstRecord, indexOfLastRecord);
-  const totalPages = Math.ceil(filteredRecords.length / recordsPerPage);
+    setStudents(updatedStudents);
+    setFilteredStudents(updatedStudents);
+    setEditingStudent(null);
+    localStorage.setItem(
+      `students-${selectedClass}-${selectedSection}`,
+      JSON.stringify(updatedStudents)
+    );
+  };
 
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+  const cancelEdit = () => {
+    setEditingStudent(null);
+  };
 
-  if (loading) {
+  // Calculate attendance stats
+  const presentCount = attendanceRecords.filter(
+    (record) => record.date === selectedDate && record.status === "present"
+  ).length;
+  const absentCount = attendanceRecords.filter(
+    (record) => record.date === selectedDate && record.status === "absent"
+  ).length;
+  const totalStudents = filteredStudents.length;
+  const attendancePercentage =
+    totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+
+  // Generate date range for view mode
+  const generateDateRange = () => {
+    const dates = [];
+    let currentDate = new Date(viewStartDate);
+    const endDate = new Date(viewEndDate);
+
+    while (currentDate <= endDate) {
+      dates.push(new Date(currentDate));
+      currentDate = addDays(currentDate, 1);
+    }
+
+    return dates;
+  };
+
+  const dateRange = generateDateRange();
+
+  // Toggle view mode
+  const toggleViewMode = () => {
+    setViewMode(viewMode === "mark" ? "view" : "mark");
+  };
+
+  // Get status icon
+  const getStatusIcon = (status) => {
+    switch (status) {
+      case "present":
+        return <CheckCircle2 className="h-4 w-4 text-green-500" />;
+      case "absent":
+        return <XCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return <span className="text-gray-300">—</span>;
+    }
+  };
+
+  if (isLoading && selectedClass && selectedSection) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 p-4">
-        <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm p-4 md:p-6 border border-blue-100">
-          <div className="animate-pulse space-y-4">
-            <div className="h-8 bg-blue-200 rounded-lg w-1/3"></div>
-            <div className="h-10 bg-blue-200 rounded-lg w-full"></div>
-            <div className="h-64 bg-blue-200 rounded-lg w-full"></div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading class attendance data...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-blue-50 p-4">
-      <div className="max-w-6xl mx-auto bg-white rounded-xl shadow-sm p-4 md:p-6 border border-blue-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-6">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 bg-white rounded-xl p-6 shadow-sm">
           <div>
-            <h1 className="text-2xl font-bold text-indigo-900 flex items-center">
-              <Bookmark className="mr-3 h-7 w-7 text-indigo-600" />
-              Student Attendance
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <ClipboardList className="text-indigo-600" />
+              <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+                Class Attendance
+              </span>
             </h1>
-            <p className="text-sm text-indigo-600 mt-1">
-              Track and manage student attendance records
+            <p className="text-gray-600 mt-2">
+              {viewMode === "mark"
+                ? "Mark and manage student attendance with ease"
+                : "View attendance records"}
             </p>
           </div>
-          {classSelected && sectionSelected && attendanceRecords.length > 0 && (
-            <div className="flex gap-3">
-              <CSVLink
-                data={prepareCSVData()}
-                filename={`attendance-${classSelected}-${sectionSelected}-${date}.csv`}
-                className="flex items-center px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors text-sm md:text-base shadow-md hover:shadow-indigo-200"
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
-              </CSVLink>
-            </div>
-          )}
-        </div>
-
-        {/* Filters and Date */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
-          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <label className="block text-sm font-medium text-indigo-800 mb-2 flex items-center">
-              <Calendar className="h-5 w-5 mr-2 text-indigo-600" />
-              Date
-            </label>
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="p-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full text-sm md:text-base bg-white"
-              max={new Date().toISOString().split("T")[0]}
-            />
-          </div>
-
-          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <label className="block text-sm font-medium text-indigo-800 mb-2 flex items-center">
-              <User className="h-5 w-5 mr-2 text-indigo-600" />
-              Class
-            </label>
-            <select
-              value={classSelected}
-              onChange={(e) => {
-                setClassSelected(e.target.value);
-                setCurrentPage(1); // Reset to first page when class changes
-              }}
-              className="p-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full text-sm md:text-base bg-white"
-            >
-              <option value="">Select Class</option>
-              {classes.map((cls) => (
-                <option key={cls} value={cls}>
-                  Class {cls}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-            <label className="block text-sm font-medium text-indigo-800 mb-2 flex items-center">
-              <Hash className="h-5 w-5 mr-2 text-indigo-600" />
-              Section
-            </label>
-            <select
-              value={sectionSelected}
-              onChange={(e) => {
-                setSectionSelected(e.target.value);
-                setCurrentPage(1); // Reset to first page when section changes
-              }}
-              className="p-2.5 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 w-full text-sm md:text-base bg-white"
-            >
-              <option value="">Select Section</option>
-              {sections.map((section) => (
-                <option key={section} value={section}>
-                  Section {section}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Search and Action Bar */}
-        {classSelected && sectionSelected && (
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
-            <div className="relative w-full md:w-96">
-              <input
-                type="text"
-                placeholder="Search by name, roll no, or admission no..."
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset to first page when search changes
-                }}
-                className="pl-11 pr-4 py-2.5 w-full border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-sm md:text-base bg-white"
-              />
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-indigo-400">
-                <Search className="h-5 w-5" />
+          <div className="mt-4 md:mt-0 flex items-center gap-4">
+            {viewMode === "mark" ? (
+              <div className="relative bg-gray-50 rounded-lg border border-gray-200">
+                <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="pl-10 pr-4 py-2 bg-transparent rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
               </div>
-            </div>
-
-            <div className="flex flex-wrap gap-3 w-full md:w-auto">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-sm border ${
-                  showFilters
-                    ? "bg-indigo-100 border-indigo-300 text-indigo-800"
-                    : "bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                }`}
-              >
-                <Filter className="h-4 w-4" />
-                <span>Filter</span>
-                {showFilters ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-              <button
-                onClick={() => setShowBulkActions(!showBulkActions)}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors text-sm border ${
-                  showBulkActions
-                    ? "bg-indigo-100 border-indigo-300 text-indigo-800"
-                    : "bg-white border-indigo-200 text-indigo-700 hover:bg-indigo-50"
-                }`}
-              >
-                <span>Bulk Actions</span>
-                {showBulkActions ? (
-                  <ChevronUp className="h-4 w-4" />
-                ) : (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Additional Filters */}
-        {showFilters && (
-          <div className="mb-8 p-5 bg-indigo-50 rounded-xl border border-indigo-100">
-            <h3 className="text-sm font-medium text-indigo-800 mb-3">
-              Filter by Status
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => {
-                  setFilter("all");
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 text-sm border ${
-                  filter === "all"
-                    ? "bg-indigo-600 text-white border-indigo-700"
-                    : "bg-white text-indigo-700 border-indigo-200 hover:bg-indigo-50"
-                }`}
-              >
-                <span>All</span>
-                <span className="text-xs bg-indigo-100 text-indigo-800 px-2 py-1 rounded-full">
-                  {attendanceRecords.length}
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  setFilter("present");
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 text-sm border ${
-                  filter === "present"
-                    ? "bg-green-600 text-white border-green-700"
-                    : "bg-white text-green-700 border-green-200 hover:bg-green-50"
-                }`}
-              >
-                <Check className="h-4 w-4" />
-                <span>Present</span>
-                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
-                  {
-                    attendanceRecords.filter((r) => r.status === "present")
-                      .length
-                  }
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  setFilter("absent");
-                  setCurrentPage(1);
-                }}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 text-sm border ${
-                  filter === "absent"
-                    ? "bg-red-600 text-white border-red-700"
-                    : "bg-white text-red-700 border-red-200 hover:bg-red-50"
-                }`}
-              >
-                <X className="h-4 w-4" />
-                <span>Absent</span>
-                <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
-                  {
-                    attendanceRecords.filter((r) => r.status === "absent")
-                      .length
-                  }
-                </span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Bulk Actions */}
-        {showBulkActions && (
-          <div className="mb-8 p-5 bg-indigo-50 rounded-xl border border-indigo-100">
-            <h3 className="text-sm font-medium text-indigo-800 mb-3">
-              Bulk Actions
-            </h3>
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => handleBulkStatusChange("present")}
-                className="px-4 py-2 bg-green-100 text-green-800 rounded-lg flex items-center space-x-2 hover:bg-green-200 text-sm border border-green-200"
-              >
-                <Check className="h-4 w-4" />
-                <span>Mark All Present</span>
-              </button>
-              <button
-                onClick={() => handleBulkStatusChange("absent")}
-                className="px-4 py-2 bg-red-100 text-red-800 rounded-lg flex items-center space-x-2 hover:bg-red-200 text-sm border border-red-200"
-              >
-                <X className="h-4 w-4" />
-                <span>Mark All Absent</span>
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Attendance Summary */}
-        {classSelected && sectionSelected && attendanceRecords.length > 0 && (
-          <div className="mb-8 grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div className="bg-gradient-to-r from-green-50 to-green-100 p-5 rounded-xl border border-green-200 shadow-sm">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium text-green-800">Present</h3>
-                <span className="text-2xl font-bold text-green-700">
-                  {
-                    attendanceRecords.filter((r) => r.status === "present")
-                      .length
-                  }
-                </span>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="relative bg-gray-50 rounded-lg border border-gray-200">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    type="date"
+                    value={viewStartDate}
+                    onChange={(e) => setViewStartDate(e.target.value)}
+                    className="pl-10 pr-4 py-2 bg-transparent rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+                <span>to</span>
+                <div className="relative bg-gray-50 rounded-lg border border-gray-200">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                  <input
+                    type="date"
+                    value={viewEndDate}
+                    onChange={(e) => setViewEndDate(e.target.value)}
+                    className="pl-10 pr-4 py-2 bg-transparent rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
               </div>
-              <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                <div
-                  className="bg-green-600 h-2 rounded-full"
-                  style={{
-                    width: `${calculatePercentage(
-                      attendanceRecords.filter((r) => r.status === "present")
-                        .length
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="mt-1 text-xs text-green-600">
-                {calculatePercentage(
-                  attendanceRecords.filter((r) => r.status === "present").length
-                )}
-                % of class
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-red-50 to-red-100 p-5 rounded-xl border border-red-200 shadow-sm">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium text-red-800">Absent</h3>
-                <span className="text-2xl font-bold text-red-700">
-                  {
-                    attendanceRecords.filter((r) => r.status === "absent")
-                      .length
-                  }
-                </span>
-              </div>
-              <div className="mt-2 w-full bg-red-200 rounded-full h-2">
-                <div
-                  className="bg-red-600 h-2 rounded-full"
-                  style={{
-                    width: `${calculatePercentage(
-                      attendanceRecords.filter((r) => r.status === "absent")
-                        .length
-                    )}%`,
-                  }}
-                ></div>
-              </div>
-              <div className="mt-1 text-xs text-red-600">
-                {calculatePercentage(
-                  attendanceRecords.filter((r) => r.status === "absent").length
-                )}
-                % of class
-              </div>
-            </div>
-            <div className="bg-gradient-to-r from-indigo-50 to-indigo-100 p-5 rounded-xl border border-indigo-200 shadow-sm">
-              <div className="flex justify-between items-center">
-                <h3 className="text-sm font-medium text-indigo-800">Total</h3>
-                <span className="text-2xl font-bold text-indigo-700">
-                  {attendanceRecords.length}
-                </span>
-              </div>
-              <div className="mt-2 w-full bg-indigo-200 rounded-full h-2">
-                <div
-                  className="bg-indigo-600 h-2 rounded-full"
-                  style={{ width: "100%" }}
-                ></div>
-              </div>
-              <div className="mt-1 text-xs text-indigo-600">
-                Class {classSelected}-{sectionSelected}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Attendance Table */}
-        {classSelected && sectionSelected ? (
-          <div className="overflow-x-auto rounded-xl border border-indigo-100 shadow-sm">
-            <table className="min-w-full divide-y divide-indigo-100">
-              <thead className="bg-indigo-50">
-                <tr>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Photo
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Admission No
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Roll No
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Student Name
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Status
-                  </th>
-                  <th
-                    scope="col"
-                    className="px-6 py-4 text-left text-xs font-medium text-indigo-800 uppercase tracking-wider"
-                  >
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-indigo-50">
-                {currentRecords.length > 0 ? (
-                  currentRecords.map((record) => (
-                    <tr
-                      key={record.studentId}
-                      className="hover:bg-indigo-50 transition-colors"
-                    >
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex-shrink-0 h-10 w-10">
-                          <img
-                            src={
-                              record.photo ||
-                              "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80"
-                            }
-                            alt={record.name}
-                            className="h-10 w-10 rounded-full object-cover border-2 border-indigo-100"
-                            onError={(e) => {
-                              e.target.src =
-                                "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80";
-                            }}
-                          />
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-900 font-medium">
-                        {record.admissionNo || "-"}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-900 font-medium">
-                        {record.rollNumber}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-indigo-900">
-                        {record.name}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <span
-                          className={`px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full 
-                          ${
-                            record.status === "present"
-                              ? "bg-green-100 text-green-800"
-                              : "bg-red-100 text-red-800"
-                          }`}
-                        >
-                          {record.status.toUpperCase()}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-indigo-500">
-                        <div className="flex space-x-2">
-                          <button
-                            onClick={() =>
-                              handleStatusChange(record.studentId, "present")
-                            }
-                            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 text-xs border ${
-                              record.status === "present"
-                                ? "bg-green-600 text-white border-green-700"
-                                : "bg-white text-green-700 border-green-200 hover:bg-green-50"
-                            }`}
-                          >
-                            <Check className="h-3.5 w-3.5" />
-                            <span>Present</span>
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleStatusChange(record.studentId, "absent")
-                            }
-                            className={`px-3 py-1.5 rounded-lg flex items-center space-x-1 text-xs border ${
-                              record.status === "absent"
-                                ? "bg-red-600 text-white border-red-700"
-                                : "bg-white text-red-700 border-red-200 hover:bg-red-50"
-                            }`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                            <span>Absent</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-8 text-center text-indigo-500"
-                    >
-                      {students.length === 0 ? (
-                        <div className="flex flex-col items-center">
-                          <User className="h-10 w-10 text-indigo-300 mb-2" />
-                          <p>No students found in this class/section</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center">
-                          <Search className="h-10 w-10 text-indigo-300 mb-2" />
-                          <p>No records match your search/filter</p>
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-center py-16 text-indigo-500 bg-indigo-50 rounded-xl border border-indigo-100">
-            <div className="mx-auto w-24 h-24 bg-white rounded-full flex items-center justify-center mb-4 border-2 border-indigo-200">
-              <User className="h-12 w-12 text-indigo-300" />
-            </div>
-            <h3 className="text-lg font-semibold mb-2 text-indigo-800">
-              No Class Selected
-            </h3>
-            <p className="max-w-md mx-auto text-indigo-600">
-              Please select a class and section to view and manage attendance
-            </p>
-          </div>
-        )}
-
-        {/* Pagination */}
-        {filteredRecords.length > recordsPerPage && (
-          <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-700">
-              Showing <span className="font-medium">{indexOfFirstRecord + 1}</span> to{' '}
-              <span className="font-medium">
-                {Math.min(indexOfLastRecord, filteredRecords.length)}
-              </span>{' '}
-              of <span className="font-medium">{filteredRecords.length}</span> results
-            </div>
-            <div className="flex space-x-2">
-              <button
-                onClick={() => paginate(1)}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                <ChevronsLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => paginate(pageNum)}
-                    className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
-              
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalPages || filteredRecords.length === 0}
-                className={`p-2 rounded-md ${currentPage === totalPages || filteredRecords.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => paginate(totalPages)}
-                disabled={currentPage === totalPages || filteredRecords.length === 0}
-                className={`p-2 rounded-md ${currentPage === totalPages || filteredRecords.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
-              >
-                <ChevronsRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Submit Button */}
-        {classSelected && sectionSelected && (
-          <div className="mt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <div className="text-sm text-indigo-600">
-              Showing {filteredRecords.length} of {attendanceRecords.length}{" "}
-              students in Class {classSelected}-{sectionSelected}
-            </div>
+            )}
             <button
-              onClick={handleSubmit}
-              disabled={attendanceRecords.length === 0 || submitting}
-              className={`px-8 py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-medium rounded-lg hover:from-indigo-700 hover:to-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 flex items-center shadow-md hover:shadow-indigo-200 transition-all ${
-                attendanceRecords.length === 0 || submitting
-                  ? "opacity-70 cursor-not-allowed"
-                  : ""
+              onClick={toggleViewMode}
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
+                viewMode === "mark"
+                  ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                  : "bg-purple-100 text-purple-700 hover:bg-purple-200"
               }`}
             >
-              {submitting ? (
-                <>
-                  <svg
-                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
-                    xmlns="http://www.w3.org/2000/svg"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                  >
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    ></circle>
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    ></path>
-                  </svg>
-                  Submitting...
-                </>
-              ) : (
-                <>
-                  <Upload className="h-5 w-5 mr-2" />
-                  Submit Attendance
-                </>
-              )}
+              <Eye className="h-4 w-4" />
+              {viewMode === "mark" ? "View Records" : "Mark Attendance"}
             </button>
+          </div>
+        </div>
+
+        {/* Class/Section Selection */}
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 grid grid-cols-1 md:grid-cols-3 gap-6 border border-gray-100">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Class
+            </label>
+            <div className="relative">
+              <select
+                value={selectedClass}
+                onChange={(e) => setSelectedClass(e.target.value)}
+                className="appearance-none w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select Class</option>
+                {classes.map((cls) => (
+                  <option key={cls} value={cls}>
+                    {cls === "Pre-K" || cls === "K" ? cls : `Class ${cls}`}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Select Section
+            </label>
+            <div className="relative">
+              <select
+                value={selectedSection}
+                onChange={(e) => setSelectedSection(e.target.value)}
+                className="appearance-none w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option value="">Select Section</option>
+                {sections.map((section) => (
+                  <option key={section} value={section}>
+                    Section {section}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+            </div>
+          </div>
+
+          <div className="flex items-end">
+            <button
+              onClick={() => {
+                setSelectedClass("");
+                setSelectedSection("");
+              }}
+              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 w-full transition-colors duration-200"
+            >
+              Clear Selection
+            </button>
+          </div>
+        </div>
+
+        {selectedClass && selectedSection ? (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-indigo-500 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Total Students
+                    </p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {totalStudents}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-indigo-100 text-indigo-600">
+                    <Users className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-green-500 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Present Today
+                    </p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {presentCount}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-green-100 text-green-600">
+                    <UserCheck className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-red-500 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Absent Today
+                    </p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {absentCount}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-full bg-red-100 text-red-600">
+                    <UserX className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-xl shadow-sm border-l-4 border-blue-500 hover:shadow-md transition-shadow duration-200">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-500">
+                      Attendance %
+                    </p>
+                    <p className="text-2xl font-bold text-gray-800">
+                      {attendancePercentage}%
+                    </p>
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
+                      <div
+                        className="bg-blue-600 h-1.5 rounded-full"
+                        style={{ width: `${attendancePercentage}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  <div className="p-3 rounded-full bg-blue-100 text-blue-600">
+                    <Clock className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Search and Action Buttons */}
+            <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row justify-between gap-4 border border-gray-100">
+              <div className="relative flex-grow">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
+                <input
+                  type="text"
+                  placeholder={`Search students in Class ${selectedClass} Section ${selectedSection}...`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 pr-4 py-2 w-full border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+              </div>
+              <div className="flex gap-2">
+                {viewMode === "mark" && (
+                  <>
+                    <button
+                      onClick={saveStudents}
+                      className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 flex items-center gap-2 transition-colors duration-200 border border-indigo-100"
+                    >
+                      <Save className="h-4 w-4" />
+                      <span>Save Names</span>
+                    </button>
+                    <button
+                      onClick={() => setIsAddingStudent(true)}
+                      className="px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-2 transition-colors duration-200 border border-green-100"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Add Student</span>
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Add Student Form */}
+            {isAddingStudent && viewMode === "mark" && (
+              <div className="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-col md:flex-row items-center gap-4 border border-gray-100">
+                <input
+                  type="text"
+                  placeholder="Enter new student name"
+                  value={newStudentName}
+                  onChange={(e) => setNewStudentName(e.target.value)}
+                  className="flex-grow px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                />
+                <div className="flex gap-2 w-full md:w-auto">
+                  <button
+                    onClick={addNewStudent}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-200 w-full md:w-auto"
+                  >
+                    Add Student
+                  </button>
+                  <button
+                    onClick={() => setIsAddingStudent(false)}
+                    className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors duration-200 w-full md:w-auto"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Attendance Sheet */}
+            {viewMode === "mark" ? (
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6 border border-gray-100">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Student
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Status
+                        </th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredStudents.length > 0 ? (
+                        filteredStudents.map((student) => {
+                          const status = getAttendanceStatus(student.id);
+                          const isExpanded = expandedStudent === student.id;
+                          const isEditing = editingStudent === student.id;
+
+                          return (
+                            <>
+                              <tr
+                                key={student.id}
+                                className={`hover:bg-gray-50 ${
+                                  isExpanded ? "bg-gray-50" : ""
+                                }`}
+                              >
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center">
+                                    {isEditing ? (
+                                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium">
+                                        <input
+                                          type="text"
+                                          name="rollNo"
+                                          value={editFormData.rollNo}
+                                          onChange={handleEditFormChange}
+                                          className="w-full text-center bg-transparent border-b border-gray-200 focus:outline-none focus:border-indigo-500"
+                                        />
+                                      </div>
+                                    ) : (
+                                      <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium">
+                                        {student.rollNo}
+                                      </div>
+                                    )}
+                                    <div className="ml-4">
+                                      {isEditing ? (
+                                        <input
+                                          type="text"
+                                          name="name"
+                                          value={editFormData.name}
+                                          onChange={handleEditFormChange}
+                                          className="text-sm font-medium text-gray-900 border-b border-gray-200 focus:outline-none focus:border-indigo-500 bg-transparent"
+                                        />
+                                      ) : (
+                                        <div className="text-sm font-medium text-gray-900">
+                                          {student.name}
+                                        </div>
+                                      )}
+                                      <div className="text-sm text-gray-500">
+                                        Class {student.class} - Sec{" "}
+                                        {student.section}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4">
+                                  <div className="flex items-center">
+                                    {status === "present" ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
+                                        Present
+                                      </span>
+                                    ) : status === "absent" ? (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 text-red-800">
+                                        Absent
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                                        Not Marked
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                  <div className="flex items-center gap-2">
+                                    {isEditing ? (
+                                      <>
+                                        <button
+                                          onClick={saveEditedStudent}
+                                          className="px-3 py-1 rounded-lg flex items-center gap-1 text-sm bg-green-100 text-green-800"
+                                        >
+                                          Save
+                                        </button>
+                                        <button
+                                          onClick={cancelEdit}
+                                          className="px-3 py-1 rounded-lg flex items-center gap-1 text-sm bg-gray-100 text-gray-700"
+                                        >
+                                          Cancel
+                                        </button>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <button
+                                          onClick={() =>
+                                            handleAttendanceChange(
+                                              student.id,
+                                              "present"
+                                            )
+                                          }
+                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${
+                                            status === "present"
+                                              ? "bg-green-100 text-green-800"
+                                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                          }`}
+                                        >
+                                          <CheckCircle2 className="h-4 w-4" />
+                                          Present
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleAttendanceChange(
+                                              student.id,
+                                              "absent"
+                                            )
+                                          }
+                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${
+                                            status === "absent"
+                                              ? "bg-red-100 text-red-800"
+                                              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                          }`}
+                                        >
+                                          <XCircle className="h-4 w-4" />
+                                          Absent
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            handleEditStudent(student)
+                                          }
+                                          className="p-1 rounded-full hover:bg-gray-100 text-gray-500 hover:text-indigo-600"
+                                        >
+                                          <Edit className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={() =>
+                                            setExpandedStudent(
+                                              isExpanded ? null : student.id
+                                            )
+                                          }
+                                          className="p-1 rounded-full hover:bg-gray-100"
+                                        >
+                                          {isExpanded ? (
+                                            <ChevronUp className="h-4 w-4 text-gray-500" />
+                                          ) : (
+                                            <ChevronDown className="h-4 w-4 text-gray-500" />
+                                          )}
+                                        </button>
+                                      </>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                              {isExpanded && (
+                                <tr className="bg-gray-50">
+                                  <td colSpan="3" className="px-6 py-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                                      <div>
+                                        <p className="font-medium text-gray-500">
+                                          Contact
+                                        </p>
+                                        {isEditing ? (
+                                          <input
+                                            type="text"
+                                            name="contact"
+                                            value={editFormData.contact}
+                                            onChange={handleEditFormChange}
+                                            className="border-b border-gray-200 focus:outline-none focus:border-indigo-500 bg-transparent w-full"
+                                          />
+                                        ) : (
+                                          <p>
+                                            {student.contact || "Not provided"}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-gray-500">
+                                          Last Attendance
+                                        </p>
+                                        <p>
+                                          {student.lastAttendance ||
+                                            "No record"}
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <p className="font-medium text-gray-500">
+                                          Attendance Rate
+                                        </p>
+                                        <div className="flex items-center gap-2">
+                                          <span>{student.attendanceRate}%</span>
+                                          <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                            <div
+                                              className="bg-indigo-600 h-1.5 rounded-full"
+                                              style={{
+                                                width: `${student.attendanceRate}%`,
+                                              }}
+                                            ></div>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan="3"
+                            className="px-6 py-8 text-center text-gray-500"
+                          >
+                            <div className="flex flex-col items-center justify-center">
+                              <Users className="h-12 w-12 text-gray-300 mb-2" />
+                              <p>
+                                No students found in Class {selectedClass}{" "}
+                                Section {selectedSection}
+                              </p>
+                              <button
+                                onClick={() => setIsAddingStudent(true)}
+                                className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
+                              >
+                                <Plus className="h-4 w-4" />
+                                Add New Student
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              // View Attendance Records
+              <div className="bg-white rounded-xl shadow-sm overflow-hidden mb-6 border border-gray-100">
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Student
+                        </th>
+                        {dateRange.map((date) => (
+                          <th
+                            key={date}
+                            className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                          >
+                            <div className="flex flex-col items-center">
+                              <span className="text-xs">
+                                {format(date, "EEE")}
+                              </span>
+                              <span className="text-xs font-bold">
+                                {format(date, "d")}
+                              </span>
+                            </div>
+                          </th>
+                        ))}
+                        <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Summary
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredStudents.length > 0 ? (
+                        filteredStudents.map((student) => {
+                          // Calculate attendance stats for this student
+                          const studentRecords = attendanceRecords.filter(
+                            (r) => r.studentId === student.id
+                          );
+                          const presentDays = studentRecords.filter(
+                            (r) => r.status === "present"
+                          ).length;
+                          const totalDays = dateRange.length;
+                          const attendanceRate =
+                            totalDays > 0
+                              ? Math.round((presentDays / totalDays) * 100)
+                              : 0;
+
+                          return (
+                            <tr key={student.id} className="hover:bg-gray-50">
+                              <td className="px-6 py-4 whitespace-nowrap">
+                                <div className="flex items-center">
+                                  <div className="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-medium">
+                                    {student.rollNo}
+                                  </div>
+                                  <div className="ml-4">
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {student.name}
+                                    </div>
+                                    <div className="text-sm text-gray-500">
+                                      Class {student.class} - Sec{" "}
+                                      {student.section}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+                              {dateRange.map((date) => {
+                                const dateStr = format(date, "yyyy-MM-dd");
+                                const status = getAttendanceStatus(
+                                  student.id,
+                                  dateStr
+                                );
+                                return (
+                                  <td
+                                    key={dateStr}
+                                    className="px-3 py-4 whitespace-nowrap text-center"
+                                  >
+                                    {getStatusIcon(status)}
+                                  </td>
+                                );
+                              })}
+                              <td className="px-6 py-4 whitespace-nowrap text-center">
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className="text-sm font-medium">
+                                    {attendanceRate}%
+                                  </span>
+                                  <div className="w-16 bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                      className="bg-indigo-600 h-1.5 rounded-full"
+                                      style={{
+                                        width: `${attendanceRate}%`,
+                                      }}
+                                    ></div>
+                                  </div>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      ) : (
+                        <tr>
+                          <td
+                            colSpan={dateRange.length + 2}
+                            className="px-6 py-8 text-center text-gray-500"
+                          >
+                            <div className="flex flex-col items-center justify-center">
+                              <Users className="h-12 w-12 text-gray-300 mb-2" />
+                              <p>
+                                No students found in Class {selectedClass}{" "}
+                                Section {selectedSection}
+                              </p>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Submit Button */}
+            {viewMode === "mark" && (
+              <div className="flex flex-col md:flex-row justify-between items-center gap-4 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <div className="text-sm text-gray-500">
+                  Showing {filteredStudents.length} of {students.length}{" "}
+                  students
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={isSubmitting || filteredStudents.length === 0}
+                    className={`px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-colors duration-200 flex items-center gap-2 ${
+                      isSubmitting || filteredStudents.length === 0
+                        ? "opacity-70 cursor-not-allowed"
+                        : ""
+                    }`}
+                  >
+                    {isSubmitting ? (
+                      "Submitting..."
+                    ) : (
+                      <>
+                        <Upload className="h-4 w-4" />
+                        <span>Submit Attendance</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="bg-white rounded-xl shadow-sm p-8 text-center border border-gray-100">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-indigo-100">
+              <ClipboardList className="h-8 w-8 text-indigo-600" />
+            </div>
+            <h3 className="mt-4 text-xl font-medium text-gray-900">
+              Select Class and Section
+            </h3>
+            <p className="mt-2 text-gray-500 max-w-md mx-auto">
+              Please choose a class and section from the dropdown menus above to
+              view and mark attendance
+            </p>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4 max-w-md mx-auto">
+              <div className="relative">
+                <select
+                  value={selectedClass}
+                  onChange={(e) => setSelectedClass(e.target.value)}
+                  className="appearance-none w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Select Class</option>
+                  {classes.map((cls) => (
+                    <option key={cls} value={cls}>
+                      {cls === "Pre-K" || cls === "K" ? cls : `Class ${cls}`}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              </div>
+              <div className="relative">
+                <select
+                  value={selectedSection}
+                  onChange={(e) => setSelectedSection(e.target.value)}
+                  className="appearance-none w-full px-4 py-2 border border-gray-200 bg-gray-50 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option value="">Select Section</option>
+                  {sections.map((section) => (
+                    <option key={section} value={section}>
+                      Section {section}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4 pointer-events-none" />
+              </div>
+            </div>
           </div>
         )}
       </div>
