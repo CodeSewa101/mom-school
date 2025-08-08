@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Camera, 
   Filter,
@@ -6,7 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Album,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Loader2,
+  Grid,
+  List
 } from 'lucide-react';
 import { 
   collection, 
@@ -28,7 +31,8 @@ export default function Gallery() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  const [viewMode, setViewMode] = useState('grid');
+  const [error, setError] = useState(null);
 
   const categories = [
     { value: 'all', label: 'All Events', icon: <ImageIcon size={16} /> },
@@ -39,58 +43,80 @@ export default function Gallery() {
     { value: 'others', label: 'Others', icon: '📷' }
   ];
 
-  useEffect(() => {
-    fetchAlbums();
-    fetchPhotos();
-  }, []);
-
-  useEffect(() => {
-    filterPhotos();
-  }, [photos, selectedCategory, selectedAlbum]);
-
-  const fetchAlbums = async () => {
+  // Memoized fetch functions
+  const fetchAlbums = useCallback(async () => {
     try {
       const albumsRef = collection(db, 'albums');
       const q = query(albumsRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       
-      const albumData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const albumData = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() 
+      }));
       setAlbums(albumData);
-    } catch (error) {
-      console.error('Error fetching albums:', error);
+    } catch (err) {
+      console.error('Error fetching albums:', err);
+      setError('Failed to load albums. Please try again later.');
     }
-  };
+  }, []);
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     try {
       const photosRef = collection(db, 'photos');
       const q = query(photosRef, orderBy('createdAt', 'desc'));
       const snapshot = await getDocs(q);
       
-      const photoData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const photoData = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
       setPhotos(photoData);
       setLoading(false);
-    } catch (error) {
-      console.error('Error fetching photos:', error);
+    } catch (err) {
+      console.error('Error fetching photos:', err);
+      setError('Failed to load photos. Please try again later.');
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filterPhotos = () => {
-    let filtered = [...photos];
+  useEffect(() => {
+    const loadData = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([fetchAlbums(), fetchPhotos()]);
+      } catch (err) {
+        setError('Failed to load gallery data.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    loadData();
+  }, [fetchAlbums, fetchPhotos]);
 
-    if (selectedAlbum !== 'all') {
-      filtered = filtered.filter(photo => photo.albumId === selectedAlbum);
-    }
+  // Improved filtering with useMemo
+  useEffect(() => {
+    const filterPhotos = () => {
+      let filtered = [...photos];
 
-    if (selectedCategory !== 'all') {
-      const categoryAlbums = albums.filter(album => album.category === selectedCategory);
-      const categoryAlbumIds = categoryAlbums.map(album => album.id);
-      filtered = filtered.filter(photo => categoryAlbumIds.includes(photo.albumId));
-    }
+      if (selectedAlbum !== 'all') {
+        filtered = filtered.filter(photo => photo.albumId === selectedAlbum);
+      }
 
-    setFilteredPhotos(filtered);
-  };
+      if (selectedCategory !== 'all') {
+        const categoryAlbums = albums.filter(album => album.category === selectedCategory);
+        const categoryAlbumIds = categoryAlbums.map(album => album.id);
+        filtered = filtered.filter(photo => categoryAlbumIds.includes(photo.albumId));
+      }
+
+      setFilteredPhotos(filtered);
+    };
+
+    filterPhotos();
+  }, [photos, selectedCategory, selectedAlbum, albums]);
 
   const openImageModal = (photo, index) => {
     setSelectedImage(photo);
@@ -99,22 +125,49 @@ export default function Gallery() {
     document.body.style.overflow = 'hidden';
   };
 
-  const closeImageModal = () => {
+  const closeImageModal = useCallback(() => {
     setShowImageModal(false);
     document.body.style.overflow = 'auto';
-  };
+  }, []);
 
-  const navigateImage = (direction) => {
+  const navigateImage = useCallback((direction) => {
     const newIndex = direction === 'next' 
       ? (currentImageIndex + 1) % filteredPhotos.length
       : (currentImageIndex - 1 + filteredPhotos.length) % filteredPhotos.length;
     
     setCurrentImageIndex(newIndex);
     setSelectedImage(filteredPhotos[newIndex]);
-  };
+  }, [currentImageIndex, filteredPhotos]);
+
+  // Keyboard navigation for image modal
+  useEffect(() => {
+    if (!showImageModal) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        closeImageModal();
+      } else if (e.key === 'ArrowRight') {
+        navigateImage('next');
+      } else if (e.key === 'ArrowLeft') {
+        navigateImage('prev');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showImageModal, navigateImage, closeImageModal]);
 
   const getCategoryConfig = (category) => {
     return categories.find(c => c.value === category) || categories[0];
+  };
+
+  const formatDate = (date) => {
+    if (!date) return 'Unknown date';
+    return new Date(date).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
   };
 
   if (loading) {
@@ -128,11 +181,29 @@ export default function Gallery() {
         </div>
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          <div className="animate-pulse grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {[...Array(12)].map((_, i) => (
-              <div key={i} className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl"></div>
-            ))}
+          <div className="flex justify-center">
+            <Loader2 className="h-12 w-12 text-indigo-600 animate-spin" />
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center max-w-md p-8 bg-white rounded-xl shadow-lg">
+          <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+            <X className="h-8 w-8 text-red-600" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">Error Loading Gallery</h2>
+          <p className="text-gray-600 mb-6">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </div>
     );
@@ -161,7 +232,12 @@ export default function Gallery() {
                   key={category.value}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setSelectedCategory(category.value)}
+                  onClick={() => {
+                    setSelectedCategory(category.value);
+                    if (category.value !== 'all') {
+                      setSelectedAlbum('all');
+                    }
+                  }}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${
                     selectedCategory === category.value
                       ? 'bg-indigo-600 text-white shadow-md'
@@ -194,34 +270,24 @@ export default function Gallery() {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm">
+              <div className="flex items-center gap-2 bg-white rounded-lg p-1 shadow-sm border border-gray-200">
                 <button
                   onClick={() => setViewMode('grid')}
                   className={`p-2 rounded-md ${viewMode === 'grid' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                  aria-label="Grid view"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="3" width="7" height="7"></rect>
-                    <rect x="14" y="14" width="7" height="7"></rect>
-                    <rect x="3" y="14" width="7" height="7"></rect>
-                  </svg>
+                  <Grid size={16} />
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
                   className={`p-2 rounded-md ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-gray-500 hover:bg-gray-100'}`}
+                  aria-label="List view"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <line x1="8" y1="6" x2="21" y2="6"></line>
-                    <line x1="8" y1="12" x2="21" y2="12"></line>
-                    <line x1="8" y1="18" x2="21" y2="18"></line>
-                    <line x1="3" y1="6" x2="3.01" y2="6"></line>
-                    <line x1="3" y1="12" x2="3.01" y2="12"></line>
-                    <line x1="3" y1="18" x2="3.01" y2="18"></line>
-                  </svg>
+                  <List size={16} />
                 </button>
               </div>
               
-              <span className="text-sm text-gray-600 bg-white px-3 py-1.5 rounded-lg shadow-sm">
+              <span className="text-sm text-gray-600 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-gray-200">
                 {filteredPhotos.length} {filteredPhotos.length === 1 ? 'photo' : 'photos'}
               </span>
             </div>
@@ -280,7 +346,7 @@ export default function Gallery() {
                         <h3 className="text-lg font-semibold text-gray-900 mb-1">{album.name}</h3>
                         <p className="text-gray-600 text-sm line-clamp-2">{album.description}</p>
                         <div className="mt-3 flex justify-between items-center text-xs text-gray-500">
-                          <span>{new Date(album.createdAt?.seconds * 1000).toLocaleDateString()}</span>
+                          <span>{formatDate(album.createdAt)}</span>
                           <button className="text-indigo-600 hover:text-indigo-800 font-medium">
                             View album →
                           </button>
@@ -327,18 +393,19 @@ export default function Gallery() {
                 transition={{ duration: 0.3 }}
                 className="relative group cursor-pointer"
                 onClick={() => openImageModal(photo, index)}
+                whileHover={{ scale: 1.02 }}
               >
-                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden shadow-sm">
+                <div className="aspect-square bg-gradient-to-br from-gray-100 to-gray-200 rounded-xl overflow-hidden shadow-sm relative">
                   <img
                     src={photo.imageUrl}
-                    alt={photo.title}
+                    alt={photo.title || 'Gallery photo'}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     loading="lazy"
                   />
-                </div>
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all rounded-xl flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Camera className="h-8 w-8 text-white" />
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all rounded-xl flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Camera className="h-8 w-8 text-white" />
+                    </div>
                   </div>
                 </div>
                 {photo.title && (
@@ -357,11 +424,12 @@ export default function Gallery() {
                 transition={{ duration: 0.3 }}
                 className="bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow cursor-pointer flex gap-4 items-center"
                 onClick={() => openImageModal(photo, index)}
+                whileHover={{ y: -2 }}
               >
                 <div className="w-24 h-24 rounded-lg overflow-hidden bg-gray-100 flex-shrink-0">
                   <img
                     src={photo.imageUrl}
-                    alt={photo.title}
+                    alt={photo.title || 'Gallery photo'}
                     className="w-full h-full object-cover"
                     loading="lazy"
                   />
@@ -370,7 +438,7 @@ export default function Gallery() {
                   <h3 className="font-medium text-gray-900 truncate">{photo.title || 'Untitled Photo'}</h3>
                   <p className="text-sm text-gray-500 mt-1 line-clamp-2">{photo.description}</p>
                   <div className="mt-2 text-xs text-gray-400">
-                    {new Date(photo.createdAt?.seconds * 1000).toLocaleDateString()}
+                    {formatDate(photo.createdAt)}
                   </div>
                 </div>
                 <div className="text-gray-400">
@@ -395,15 +463,17 @@ export default function Gallery() {
               }
             </p>
             {(selectedCategory !== 'all' || selectedAlbum !== 'all') && (
-              <button
+              <motion.button
                 onClick={() => {
                   setSelectedCategory('all');
                   setSelectedAlbum('all');
                 }}
                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
                 Reset Filters
-              </button>
+              </motion.button>
             )}
           </div>
         )}
@@ -432,6 +502,7 @@ export default function Gallery() {
                 whileTap={{ scale: 0.9 }}
                 onClick={closeImageModal}
                 className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-black/50 rounded-full p-2 backdrop-blur-sm"
+                aria-label="Close image"
               >
                 <X className="h-6 w-6" />
               </motion.button>
@@ -447,6 +518,7 @@ export default function Gallery() {
                       navigateImage('prev');
                     }}
                     className="absolute left-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-black/50 rounded-full p-2 backdrop-blur-sm"
+                    aria-label="Previous image"
                   >
                     <ChevronLeft className="h-6 w-6" />
                   </motion.button>
@@ -458,6 +530,7 @@ export default function Gallery() {
                       navigateImage('next');
                     }}
                     className="absolute right-4 top-1/2 transform -translate-y-1/2 text-white hover:text-gray-300 z-10 bg-black/50 rounded-full p-2 backdrop-blur-sm"
+                    aria-label="Next image"
                   >
                     <ChevronRight className="h-6 w-6" />
                   </motion.button>
@@ -473,7 +546,7 @@ export default function Gallery() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.2 }}
                   src={selectedImage.imageUrl}
-                  alt={selectedImage.title}
+                  alt={selectedImage.title || 'Gallery photo'}
                   className="max-w-full max-h-[80vh] object-contain"
                 />
               </div>
