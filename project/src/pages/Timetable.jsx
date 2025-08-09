@@ -8,6 +8,7 @@ import {
 } from "firebase/firestore";
 import { db } from "../config/firebase";
 import { toast } from "react-toastify";
+import { useAuth } from "../contexts/AuthContext";
 
 const classOptions = [
   "Pre-K",
@@ -34,7 +35,14 @@ const days = [
 ];
 
 const Timetable = () => {
+  const { currentUser } = useAuth();
+  const isAdmin = currentUser?.role === "admin";
+
   // State management
+  const [classTimetables, setClassTimetables] = useState({});
+  const [currentPage, setCurrentPage] = useState(1);
+  const [classesPerPage] = useState(4);
+  const [viewMode, setViewMode] = useState("edit");
   const [selectedClass, setSelectedClass] = useState("");
   const [teacherName, setTeacherName] = useState("");
   const [timetable, setTimetable] = useState({});
@@ -42,15 +50,7 @@ const Timetable = () => {
   const [isClassOpen, setIsClassOpen] = useState(false);
   const [isTeacherOpen, setIsTeacherOpen] = useState(false);
   const [teachers, setTeachers] = useState([]);
-  const [classTimetables, setClassTimetables] = useState({});
   const [editingSubject, setEditingSubject] = useState("");
-
-  // Pagination state
-  const [viewMode, setViewMode] = useState("edit"); // 'edit' or 'viewAll'
-  const [currentPage, setCurrentPage] = useState(1);
-  const [classesPerPage] = useState(4); // Number of timetables to show per page
-
-  // Time slot management
   const [timeSlots, setTimeSlots] = useState([]);
   const [newTimeSlot, setNewTimeSlot] = useState({
     start: "",
@@ -65,13 +65,13 @@ const Timetable = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch teachers
-        const teachersSnapshot = await getDocs(collection(db, "teachers"));
-        setTeachers(
-          teachersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        );
+        if (isAdmin) {
+          const teachersSnapshot = await getDocs(collection(db, "teachers"));
+          setTeachers(
+            teachersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+          );
+        }
 
-        // Fetch timetables
         const timetablesSnapshot = await getDocs(collection(db, "timetables"));
         const timetablesData = {};
         timetablesSnapshot.forEach((doc) => {
@@ -84,11 +84,11 @@ const Timetable = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isAdmin]);
 
   // Load timetable when class changes
   useEffect(() => {
-    if (selectedClass && classTimetables[selectedClass]) {
+    if (isAdmin && selectedClass && classTimetables[selectedClass]) {
       setTimetable(classTimetables[selectedClass]);
       setTimeSlots(classTimetables[selectedClass].timeSlots || []);
     } else {
@@ -98,9 +98,8 @@ const Timetable = () => {
     setSelectedCell(null);
     setEditingSubject("");
     setTeacherName("");
-  }, [selectedClass, classTimetables]);
+  }, [selectedClass, classTimetables, isAdmin]);
 
-  // Helper function to format time
   const formatTime = (time) => {
     if (!time) return "";
     const [hours, minutes] = time.split(":");
@@ -110,7 +109,6 @@ const Timetable = () => {
     return `${displayHour}:${minutes} ${period}`;
   };
 
-  // Save timetable to Firestore
   const saveTimetable = async (updatedData) => {
     try {
       await setDoc(doc(db, "timetables", selectedClass), updatedData);
@@ -126,13 +124,13 @@ const Timetable = () => {
     }
   };
 
-  // Cell click handler
   const handleCellClick = (day, period, cellData) => {
-    if (!selectedClass) {
-      toast.warning("Please select a class first");
+    if (!isAdmin || !selectedClass) {
+      if (!selectedClass) {
+        toast.warning("Please select a class first");
+      }
       return;
     }
-    // Don't allow editing break periods
     if (cellData?.isBreak) return;
 
     setSelectedCell({ day, period });
@@ -140,9 +138,8 @@ const Timetable = () => {
     setTeacherName(cellData?.teacher || "");
   };
 
-  // Save subject to timetable
   const handleSave = async () => {
-    if (!selectedClass || !editingSubject || !selectedCell) return;
+    if (!isAdmin || !selectedClass || !editingSubject || !selectedCell) return;
 
     const { day, period } = selectedCell;
     const value = {
@@ -172,10 +169,10 @@ const Timetable = () => {
     }
   };
 
-  // Clear a specific cell
   const handleClearCell = async (day, period) => {
+    if (!isAdmin) return;
+
     const cellData = timetable[day]?.[period];
-    // Don't allow clearing break periods
     if (cellData?.isBreak) {
       toast.warning("Cannot clear break periods");
       return;
@@ -197,10 +194,11 @@ const Timetable = () => {
     }
   };
 
-  // Add or update time slot
   const handleSaveTimeSlot = async () => {
-    if (!newTimeSlot.start || !newTimeSlot.end) {
-      toast.warning("Please enter both start and end times");
+    if (!isAdmin || !newTimeSlot.start || !newTimeSlot.end) {
+      if (!newTimeSlot.start || !newTimeSlot.end) {
+        toast.warning("Please enter both start and end times");
+      }
       return;
     }
 
@@ -216,14 +214,12 @@ const Timetable = () => {
 
     let updatedTimeSlots;
     if (editingTimeSlotIndex !== null) {
-      // Update existing time slot
       updatedTimeSlots = [...timeSlots];
       updatedTimeSlots[editingTimeSlotIndex] = {
         text: formattedSlot,
         isBreak: newTimeSlot.isBreak,
       };
     } else {
-      // Add new time slot
       updatedTimeSlots = [
         ...timeSlots,
         {
@@ -249,16 +245,15 @@ const Timetable = () => {
     }
   };
 
-  // Edit time slot
   const handleEditTimeSlot = (index) => {
+    if (!isAdmin) return;
+
     const slot = timeSlots[index];
-    // Extract time from the formatted string
     const timeMatch = slot.text.match(/(\d+:\d+ [AP]M) - (\d+:\d+ [AP]M)/);
     const periodMatch = slot.text.match(/^(.+?) \(\d+:\d+ [AP]M/);
 
     if (timeMatch) {
       const [_, startTime, endTime] = timeMatch;
-      // Convert AM/PM time back to 24-hour format for the input
       const convertTo24Hour = (timeStr) => {
         const [time, period] = timeStr.split(" ");
         let [hours, minutes] = time.split(":");
@@ -279,8 +274,9 @@ const Timetable = () => {
     }
   };
 
-  // Remove time slot
   const handleRemoveTimeSlot = async (index) => {
+    if (!isAdmin) return;
+
     const updatedTimeSlots = timeSlots.filter((_, i) => i !== index);
     const updatedTimetable = { ...timetable, timeSlots: updatedTimeSlots };
 
@@ -291,10 +287,11 @@ const Timetable = () => {
     }
   };
 
-  // Clear entire timetable
   const handleClearAll = async () => {
-    if (!selectedClass) {
-      toast.warning("Please select a class first");
+    if (!isAdmin || !selectedClass) {
+      if (!selectedClass) {
+        toast.warning("Please select a class first");
+      }
       return;
     }
 
@@ -320,7 +317,7 @@ const Timetable = () => {
     }
   };
 
-  // Pagination logic for view all mode
+  // Pagination logic
   const indexOfLastClass = currentPage * classesPerPage;
   const indexOfFirstClass = indexOfLastClass - classesPerPage;
   const currentClasses = classOptions.slice(
@@ -424,6 +421,82 @@ const Timetable = () => {
     );
   };
 
+  // For non-admin users
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl p-6 text-white shadow-lg mb-6">
+            <h1 className="text-3xl font-bold">School Timetables</h1>
+            <p className="text-indigo-100 opacity-90">
+              View all class schedules
+            </p>
+          </div>
+
+          {/* View All Timetables Section */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">
+              All Class Timetables
+            </h2>
+
+            {currentClasses.map((className) => renderTimetable(className))}
+
+            {/* Pagination */}
+            <div className="flex justify-center mt-6">
+              <nav className="inline-flex rounded-md shadow">
+                <button
+                  onClick={() =>
+                    paginate(currentPage > 1 ? currentPage - 1 : 1)
+                  }
+                  disabled={currentPage === 1}
+                  className={`px-3 py-1 rounded-l-md border border-gray-300 ${
+                    currentPage === 1
+                      ? "bg-gray-100 text-gray-400"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Previous
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                  (number) => (
+                    <button
+                      key={number}
+                      onClick={() => paginate(number)}
+                      className={`px-3 py-1 border-t border-b border-gray-300 ${
+                        currentPage === number
+                          ? "bg-indigo-600 text-white"
+                          : "bg-white text-gray-700 hover:bg-gray-50"
+                      }`}
+                    >
+                      {number}
+                    </button>
+                  )
+                )}
+                <button
+                  onClick={() =>
+                    paginate(
+                      currentPage < totalPages ? currentPage + 1 : totalPages
+                    )
+                  }
+                  disabled={currentPage === totalPages}
+                  className={`px-3 py-1 rounded-r-md border border-gray-300 ${
+                    currentPage === totalPages
+                      ? "bg-gray-100 text-gray-400"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
+                  }`}
+                >
+                  Next
+                </button>
+              </nav>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // For admin users
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
@@ -501,7 +574,7 @@ const Timetable = () => {
                       >
                         <path
                           fillRule="evenodd"
-                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                           clipRule="evenodd"
                         />
                       </svg>
@@ -802,7 +875,7 @@ const Timetable = () => {
                             >
                               <path
                                 fillRule="evenodd"
-                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                                d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"
                                 clipRule="evenodd"
                               />
                             </svg>
@@ -1051,7 +1124,7 @@ const Timetable = () => {
           </>
         ) : (
           <>
-            {/* View All Timetables Section */}
+            {/* View All Timetables Section - For admin */}
             <div className="bg-white rounded-xl shadow-md p-6 mb-6">
               <h2 className="text-xl font-semibold text-gray-800 mb-4">
                 All Class Timetables
