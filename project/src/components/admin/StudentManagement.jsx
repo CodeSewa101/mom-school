@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { 
   Users, 
   Plus, 
@@ -42,6 +43,7 @@ export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,6 +93,16 @@ export default function StudentManagement() {
   useEffect(() => {
     filterStudents();
   }, [students, searchTerm, filterClass]);
+
+  useEffect(() => {
+    const shouldOpenAddModal = searchParams.get('add') === 'true';
+    if (shouldOpenAddModal) {
+      setShowAddModal(true);
+      // Remove the query parameter from URL
+      searchParams.delete('add');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
 
   const fetchTotalStudents = async () => {
     try {
