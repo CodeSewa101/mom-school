@@ -36,7 +36,6 @@ const days = [
 
 const Timetable = () => {
   const { currentUser } = useAuth();
-  const isAdmin = currentUser?.role === "admin";
 
   // State management
   const [classTimetables, setClassTimetables] = useState({});
@@ -65,12 +64,10 @@ const Timetable = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        if (isAdmin) {
-          const teachersSnapshot = await getDocs(collection(db, "teachers"));
-          setTeachers(
-            teachersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-          );
-        }
+        const teachersSnapshot = await getDocs(collection(db, "teachers"));
+        setTeachers(
+          teachersSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
+        );
 
         const timetablesSnapshot = await getDocs(collection(db, "timetables"));
         const timetablesData = {};
@@ -84,11 +81,11 @@ const Timetable = () => {
       }
     };
     fetchData();
-  }, [isAdmin]);
+  }, []);
 
   // Load timetable when class changes
   useEffect(() => {
-    if (isAdmin && selectedClass && classTimetables[selectedClass]) {
+    if (selectedClass && classTimetables[selectedClass]) {
       setTimetable(classTimetables[selectedClass]);
       setTimeSlots(classTimetables[selectedClass].timeSlots || []);
     } else {
@@ -98,7 +95,7 @@ const Timetable = () => {
     setSelectedCell(null);
     setEditingSubject("");
     setTeacherName("");
-  }, [selectedClass, classTimetables, isAdmin]);
+  }, [selectedClass, classTimetables]);
 
   const formatTime = (time) => {
     if (!time) return "";
@@ -125,10 +122,8 @@ const Timetable = () => {
   };
 
   const handleCellClick = (day, period, cellData) => {
-    if (!isAdmin || !selectedClass) {
-      if (!selectedClass) {
-        toast.warning("Please select a class first");
-      }
+    if (!selectedClass) {
+      toast.warning("Please select a class first");
       return;
     }
     if (cellData?.isBreak) return;
@@ -139,7 +134,7 @@ const Timetable = () => {
   };
 
   const handleSave = async () => {
-    if (!isAdmin || !selectedClass || !editingSubject || !selectedCell) return;
+    if (!selectedClass || !editingSubject || !selectedCell) return;
 
     const { day, period } = selectedCell;
     const value = {
@@ -170,8 +165,6 @@ const Timetable = () => {
   };
 
   const handleClearCell = async (day, period) => {
-    if (!isAdmin) return;
-
     const cellData = timetable[day]?.[period];
     if (cellData?.isBreak) {
       toast.warning("Cannot clear break periods");
@@ -195,10 +188,8 @@ const Timetable = () => {
   };
 
   const handleSaveTimeSlot = async () => {
-    if (!isAdmin || !newTimeSlot.start || !newTimeSlot.end) {
-      if (!newTimeSlot.start || !newTimeSlot.end) {
-        toast.warning("Please enter both start and end times");
-      }
+    if (!newTimeSlot.start || !newTimeSlot.end) {
+      toast.warning("Please enter both start and end times");
       return;
     }
 
@@ -246,8 +237,6 @@ const Timetable = () => {
   };
 
   const handleEditTimeSlot = (index) => {
-    if (!isAdmin) return;
-
     const slot = timeSlots[index];
     const timeMatch = slot.text.match(/(\d+:\d+ [AP]M) - (\d+:\d+ [AP]M)/);
     const periodMatch = slot.text.match(/^(.+?) \(\d+:\d+ [AP]M/);
@@ -275,8 +264,6 @@ const Timetable = () => {
   };
 
   const handleRemoveTimeSlot = async (index) => {
-    if (!isAdmin) return;
-
     const updatedTimeSlots = timeSlots.filter((_, i) => i !== index);
     const updatedTimetable = { ...timetable, timeSlots: updatedTimeSlots };
 
@@ -288,10 +275,8 @@ const Timetable = () => {
   };
 
   const handleClearAll = async () => {
-    if (!isAdmin || !selectedClass) {
-      if (!selectedClass) {
-        toast.warning("Please select a class first");
-      }
+    if (!selectedClass) {
+      toast.warning("Please select a class first");
       return;
     }
 
@@ -421,82 +406,6 @@ const Timetable = () => {
     );
   };
 
-  // For non-admin users
-  if (!isAdmin) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
-        <div className="max-w-7xl mx-auto">
-          {/* Header */}
-          <div className="bg-gradient-to-r from-indigo-600 to-purple-700 rounded-xl p-6 text-white shadow-lg mb-6">
-            <h1 className="text-3xl font-bold">School Timetables</h1>
-            <p className="text-indigo-100 opacity-90">
-              View all class schedules
-            </p>
-          </div>
-
-          {/* View All Timetables Section */}
-          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
-            <h2 className="text-xl font-semibold text-gray-800 mb-4">
-              All Class Timetables
-            </h2>
-
-            {currentClasses.map((className) => renderTimetable(className))}
-
-            {/* Pagination */}
-            <div className="flex justify-center mt-6">
-              <nav className="inline-flex rounded-md shadow">
-                <button
-                  onClick={() =>
-                    paginate(currentPage > 1 ? currentPage - 1 : 1)
-                  }
-                  disabled={currentPage === 1}
-                  className={`px-3 py-1 rounded-l-md border border-gray-300 ${
-                    currentPage === 1
-                      ? "bg-gray-100 text-gray-400"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Previous
-                </button>
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(
-                  (number) => (
-                    <button
-                      key={number}
-                      onClick={() => paginate(number)}
-                      className={`px-3 py-1 border-t border-b border-gray-300 ${
-                        currentPage === number
-                          ? "bg-indigo-600 text-white"
-                          : "bg-white text-gray-700 hover:bg-gray-50"
-                      }`}
-                    >
-                      {number}
-                    </button>
-                  )
-                )}
-                <button
-                  onClick={() =>
-                    paginate(
-                      currentPage < totalPages ? currentPage + 1 : totalPages
-                    )
-                  }
-                  disabled={currentPage === totalPages}
-                  className={`px-3 py-1 rounded-r-md border border-gray-300 ${
-                    currentPage === totalPages
-                      ? "bg-gray-100 text-gray-400"
-                      : "bg-white text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  Next
-                </button>
-              </nav>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // For admin users
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">

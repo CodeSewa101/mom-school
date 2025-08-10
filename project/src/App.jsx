@@ -1,25 +1,26 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
-import { AuthProvider } from './contexts/AuthContext';
-import Header from './components/layout/Header';
-import Footer from './components/layout/Footer';
-import Home from './pages/Home';
-import About from './pages/About';
-import Contact from './pages/Contact';
-import Gallery from './pages/Gallery';
-import Login from './components/auth/Login';
-import Register from './components/auth/Register';
-import ProtectedRoute from './components/common/ProtectedRoute';
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Toaster } from "react-hot-toast";
+import { AuthProvider } from "./contexts/AuthContext";
+import Header from "./components/layout/Header";
+import Footer from "./components/layout/Footer";
+import Home from "./pages/Home";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import Gallery from "./pages/Gallery";
+import Login from "./components/auth/Login";
+import Register from "./components/auth/Register";
+import ProtectedRoute from "./components/common/ProtectedRoute";
 
-import AdminLayout from './components/admin/AdminLayout';
-import AdminDashboard from './components/admin/AdminDashboard';
-import StudentManagement from './components/admin/StudentManagement';
-import TeacherManagement from './components/admin/TeacherManagement';
-import NotificationManagement from './components/admin/NotificationManagement';
-import PhotoGallery from './components/admin/PhotoGallery';
-import Timetable from './pages/Timetable';
-import HomeworkPage from './pages/HomeworkPage'; // ✅ NEW
-import AttendancePage from "./pages/AttendancePage"; 
+import AdminLayout from "./components/admin/AdminLayout";
+import AdminDashboard from "./components/admin/AdminDashboard";
+import StudentManagement from "./components/admin/StudentManagement";
+import TeacherManagement from "./components/admin/TeacherManagement";
+import NotificationManagement from "./components/admin/NotificationManagement";
+import PhotoGallery from "./components/admin/PhotoGallery";
+import Timetable from "./pages/Timetable"; // Admin version
+import TimetableView from "./pages/TimetableView"; // Public version
+import HomeworkPage from "./pages/HomeworkPage";
+import AttendancePage from "./pages/AttendancePage";
 
 function App() {
   return (
@@ -86,6 +87,19 @@ function App() {
               </div>
             }
           />
+          {/* Add the public timetable route */}
+          <Route
+            path="/timetable"
+            element={
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <main className="flex-grow">
+                  <TimetableView />
+                </main>
+                <Footer />
+              </div>
+            }
+          />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
 
@@ -101,10 +115,8 @@ function App() {
               />
               <Route path="gallery" element={<PhotoGallery />} />
               <Route path="timetable" element={<Timetable />} />
-              <Route path="homework" element={<HomeworkPage />} />{" "}
-              {/* ✅ Homework Route */}
-              <Route path="attendance" element={<AttendancePage />} />{" "}
-              {/* ✅ Added Attendance Route */}
+              <Route path="homework" element={<HomeworkPage />} />
+              <Route path="attendance" element={<AttendancePage />} />
             </Route>
           </Route>
         </Routes>

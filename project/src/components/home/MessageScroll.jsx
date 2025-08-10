@@ -1,34 +1,55 @@
+// src/components/home/MessageScroll.jsx
 import { useEffect, useState } from "react";
-
-const messages = [
-  "🎓 Admissions open for 2025-26 academic year!",
-  "🏫 School will remain closed on Monday for maintenance.",
-  "🏆 Annual sports day scheduled for next month.",
-  "👪 Parent-teacher meetings next week - check schedule.",
-  "📚 New library resources now available for students.",
-  "🚌 School bus routes updated - please check notices.",
-  "🥇 Congratulations to our science fair winners!",
-];
+import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
+import { db } from "../../config/firebase";
 
 export default function MessageScroll() {
-  const [currentMessages, setCurrentMessages] = useState([
-    messages[0],
-    messages[1],
-  ]);
-  const [index, setIndex] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Cycle through messages every 5 seconds
-    const messageInterval = setInterval(() => {
-      setIndex((prev) => (prev + 1) % messages.length);
-      setCurrentMessages([
-        messages[index],
-        messages[(index + 1) % messages.length],
-      ]);
-    }, 5000);
+    const fetchActiveNotifications = async () => {
+      try {
+        const notificationsRef = collection(db, "notifications");
+        const q = query(
+          notificationsRef,
+          where("isActive", "==", true),
+          orderBy("priority", "desc"),
+          orderBy("createdAt", "desc")
+        );
 
-    return () => clearInterval(messageInterval);
-  }, [index]);
+        const snapshot = await getDocs(q);
+        const notificationData = snapshot.docs.map((doc) => ({
+          id: doc.id,
+          ...doc.data(),
+        }));
+
+        setNotifications(notificationData);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching notifications:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchActiveNotifications();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="bg-blue-600 text-white py-3 px-4 overflow-hidden">
+        <div className="max-w-6xl mx-auto">Loading announcements...</div>
+      </div>
+    );
+  }
+
+  if (notifications.length === 0) {
+    return null; // Don't show anything if no active notifications
+  }
+
+  // Extract only messages from notifications
+  const allMessages = notifications.map((n) => n.message);
+  const scrollingContent = [...allMessages, ...allMessages].join(" ••• ");
 
   return (
     <div className="bg-blue-600 text-white py-3 px-4 overflow-hidden">
@@ -38,13 +59,19 @@ export default function MessageScroll() {
         </span>
 
         <div className="relative overflow-hidden flex-1">
-          <div className="whitespace-nowrap inline-block animate-marquee">
-            {currentMessages.join(" ••• ")} ••• {currentMessages.join(" ••• ")}
+          <div
+            className="whitespace-nowrap inline-block animate-marquee"
+            style={{
+              animationDuration: `${allMessages.length * 5}s`,
+              paddingLeft: "100%",
+            }}
+          >
+            {scrollingContent}
           </div>
         </div>
       </div>
 
-      <style jsx global>{`
+      <style jsx>{`
         @keyframes marquee {
           0% {
             transform: translateX(0);
@@ -55,8 +82,8 @@ export default function MessageScroll() {
         }
         .animate-marquee {
           display: inline-block;
-          animation: marquee 20s linear infinite;
-          padding-left: 100%;
+          animation: marquee linear infinite;
+          will-change: transform;
         }
       `}</style>
     </div>
