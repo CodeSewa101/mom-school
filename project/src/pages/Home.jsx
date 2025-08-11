@@ -75,7 +75,7 @@ export default function Home() {
       action: "View",
       color: "text-blue-600",
       bgColor: "bg-blue-50",
-      href: "/timetable", // Updated to public route
+      href: "/admin/timetable",
     },
     {
       icon: Bell,
@@ -119,7 +119,7 @@ export default function Home() {
       color: "text-blue-600",
       bgColor: "bg-blue-100/50",
       borderColor: "border-blue-200",
-      href: "/timetable", // Updated to public route
+      href: "/admin/timetable",
     },
     {
       icon: Bell,
@@ -252,7 +252,7 @@ export default function Home() {
                 </div>
                 <div className="mt-auto">
                   <Link
-                    to="/timetable" // Updated to public route
+                    to="/admin/timetable"
                     className="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium mt-6 group-hover:underline"
                   >
                     View Schedule

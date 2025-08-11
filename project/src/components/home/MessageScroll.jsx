@@ -55,7 +55,7 @@ export default function MessageScroll() {
     <div className="bg-blue-600 text-white py-3 px-4 overflow-hidden">
       <div className="max-w-6xl mx-auto flex items-center">
         <span className="font-semibold mr-3 whitespace-nowrap shrink-0">
-          Announcements:
+          {/* Announcements: */}
         </span>
 
         <div className="relative overflow-hidden flex-1">
