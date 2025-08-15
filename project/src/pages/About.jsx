@@ -49,7 +49,7 @@ export default function About() {
             <span className="text-sm font-medium">About Our Institution</span>
           </div>
           <h1 className="text-4xl md:text-6xl font-bold mb-6 leading-tight bg-clip-text text-transparent bg-gradient-to-r from-yellow-300 to-yellow-100">
-            Mom School of Excellency
+            MOM SCHOOL OF EXCELLENCY
           </h1>
           <p className="text-xl md:text-2xl opacity-90 max-w-3xl mx-auto font-light">
             Empowering minds, shaping futures, and building tomorrow's leaders through innovative education.
@@ -296,7 +296,7 @@ export default function About() {
           >
             <h2 className="text-3xl md:text-4xl font-bold mb-6 text-white">Ready to Join Our Community?</h2>
             <p className="text-xl opacity-90 max-w-3xl mx-auto mb-8 text-white/90">
-              Discover how Mom School of Excellency can help your child reach their full potential.
+              Discover how MOM SCHOOL OF EXCELLENCY can help your child reach their full potential.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button className="px-8 py-3.5 bg-white text-indigo-900 rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 shadow-lg hover:shadow-white/30">

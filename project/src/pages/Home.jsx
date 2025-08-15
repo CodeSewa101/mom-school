@@ -2,6 +2,7 @@ import HeroBanner from "../components/home/HeroBanner";
 import NotificationBar from "../components/home/NotificationBar";
 import MessageScroll from "../components/home/MessageScroll";
 import { Link } from "react-router-dom";
+import principalImg from "../image/Principal.jpg";
 import {
   BookOpen,
   Users,
@@ -171,29 +172,117 @@ export default function Home() {
       <NotificationBar />
 
       {/* Welcome Section */}
-      <section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-blue-50 relative">
-        <div className="absolute inset-0 opacity-5 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
-        <div className="max-w-6xl mx-auto relative">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4 relative inline-block">
-              <span className="relative z-10">
-                Welcome to <span className="text-blue-600">Mom School</span>
-              </span>
-              <span className="absolute bottom-0 left-0 w-full h-3 bg-yellow-200 opacity-60 -z-0 transform -rotate-1"></span>
-            </h2>
-            <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-              Where traditional values meet innovative education to shape
-              tomorrow's leaders through a transformative learning experience
-            </p>
-          </motion.div>
+<section className="py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-blue-50 relative">
+  <div className="absolute inset-0 opacity-5 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+  <div className="max-w-6xl mx-auto relative">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      viewport={{ once: true }}
+      className="text-center mb-16"
+    >
+      <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+        Welcome to <br className="sm:hidden" />
+        <span className="text-blue-600 text-3xl sm:text-4xl md:text-5xl block mt-2">
+          MOM SCHOOL OF EXCELLENCY
+        </span>
+      </h1>
+      <p className="text-lg sm:text-xl text-gray-600 max-w-3xl mx-auto">
+        Where traditional values meet innovative education to shape
+        tomorrow's leaders through a transformative learning experience
+      </p>
+    </motion.div>
+  </div>
+</section>
+
+      {/* Principal's Message Section */}
+<section className="py-20 bg-white relative">
+  <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+    {/* Section Heading */}
+    <div className="text-center mb-16">
+      <motion.h2
+        initial={{ opacity: 0, y: 20 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="text-4xl font-bold text-gray-900 mb-4"
+      >
+        <span className="relative inline-block">
+          <span className="relative z-10">Message from the </span>
+          <span className="text-blue-600 relative z-10">Principal</span>
+          <span className="absolute bottom-0 left-0 w-full h-3 bg-yellow-200 opacity-60 -z-0 transform -rotate-1"></span>
+        </span>
+      </motion.h2>
+    </div>
+
+    {/* Content Section */}
+    <div className="flex flex-col lg:flex-row gap-12 items-center">
+      {/* Principal's Photo */}
+      <motion.div
+        initial={{ opacity: 0, x: -20 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="w-full lg:w-1/3 flex justify-center"
+      >
+        <div className="relative w-full max-w-[320px] aspect-square rounded-2xl overflow-hidden shadow-xl border-4 border-white bg-gray-100">
+          <img
+            src={principalImg}
+            alt="Principal Dr. Jane Smith"
+            className="absolute inset-0 w-full h-full object-cover object-top"
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
+          <div className="absolute bottom-0 left-0 p-6 text-white">
+            <h4 className="text-xl font-bold drop-shadow-md">Miss. Pratima Kumari Patra</h4>
+            <p className="text-sm opacity-90 drop-shadow-md">Principal</p>
+          </div>
         </div>
-      </section>
+      </motion.div>
+
+      {/* Message Content */}
+      <motion.div
+        initial={{ opacity: 0, x: 20 }}
+        whileInView={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.6 }}
+        viewport={{ once: true }}
+        className="w-full lg:w-2/3"
+      >
+        <div className="bg-blue-50 rounded-2xl p-8 md:p-10 relative overflow-hidden">
+          <div className="absolute -right-10 -top-10 w-40 h-40 rounded-full bg-blue-200 opacity-20"></div>
+          <div className="relative">
+            <blockquote className="text-gray-700 text-lg md:text-xl leading-relaxed mb-6">
+              "It is my privilege to serve as the principal of our vibrant and dedicated learning community. 
+              At our MOM School of Excellency, we believe that education is not just about academic achievement—it is about 
+              inspiring curiosity, building character, and preparing our students to thrive in an ever-changing world."
+            </blockquote>
+            <p className="text-gray-600 mb-6">
+              Our talented staff works tirelessly to create an environment where every child feels valued, challenged, 
+              and supported. We encourage our students to dream big, work hard, and develop a lifelong love of learning. 
+              We also recognize the importance of strong partnerships between school, home, and community. Together, 
+              we can ensure that each student receives the guidance, opportunities, and encouragement they need to reach 
+              their fullest potential.
+            </p>
+            <p className="text-gray-600 mb-6">
+              Thank you for visiting our website and taking the time to learn more about our school. 
+              We are proud of our students, our staff, and our shared commitment to excellence.
+            </p>
+            <div className="flex items-center">
+              <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold mr-4">
+                JS
+              </div>
+              <div>
+                <h4 className="font-bold text-gray-900">Miss. Pratima Kumari Patra</h4>
+                <p className="text-sm text-gray-600">Principal, MOM SCHOOL OF EXCELLENCY</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  </div>
+</section>
+
 
       {/* Academic Session Section */}
       <section className="relative py-16 bg-white">
@@ -388,10 +477,10 @@ export default function Home() {
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">
-                      TC Verify
+                      Result
                     </h3>
                     <p className="text-gray-500 mt-1">
-                      Transfer certificate verification
+                      View Result
                     </p>
                   </div>
                 </div>
@@ -400,7 +489,7 @@ export default function Home() {
                     to="/tc-verify"
                     className="inline-flex items-center text-rose-600 hover:text-rose-800 font-medium mt-6 group-hover:underline"
                   >
-                    Verify Certificate
+                    View Result
                     <ArrowRight className="ml-2 w-4 h-4 transition-transform group-hover:translate-x-1" />
                   </Link>
                 </div>
@@ -497,19 +586,19 @@ export default function Home() {
               {
                 quote:
                   "Mom School has transformed my child's learning experience. The teachers are exceptional!",
-                author: "Sarah Johnson",
+                author: "Mr. Prakash Rout",
                 role: "Parent of 3rd Grader",
               },
               {
                 quote:
                   "The holistic approach to education here is exactly what we were looking for.",
-                author: "Michael Chen",
+                author: "Swarnalata Panda",
                 role: "Parent of 5th Grader",
               },
               {
                 quote:
                   "My daughter loves going to school every day. That says it all!",
-                author: "Priya Patel",
+                author: "Sunita Sahu",
                 role: "Parent of 2nd Grader",
               },
             ].map((testimonial, index) => (

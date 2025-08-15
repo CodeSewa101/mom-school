@@ -2,20 +2,18 @@ import {
   GraduationCap, 
   Mail, 
   Phone, 
-  MapPin, 
-  ArrowUp,
-  Facebook,
-  Twitter,
-  Instagram,
-  Youtube,
-  Linkedin
+  MapPin,
+  ArrowUp
 } from 'lucide-react';
+
+import { FaFacebookF, FaInstagram, FaYoutube, FaWhatsapp } from 'react-icons/fa';
 
 export default function Footer() {
   return (
     <footer className="bg-gradient-to-b from-gray-900 to-gray-800 text-white">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
+          
           {/* School Info */}
           <div className="col-span-1 md:col-span-2">
             <div className="flex items-center space-x-3 mb-6">
@@ -50,20 +48,37 @@ export default function Footer() {
 
             {/* Social Media Links */}
             <div className="flex space-x-5 mt-8">
-              <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform">
-                <Facebook className="h-6 w-6" />
+              <a
+                href="https://wa.me/919876543210"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-green-400 transition-colors hover:-translate-y-1 transform"
+              >
+                <FaWhatsapp className="h-6 w-6" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform">
-                <Twitter className="h-6 w-6" />
+              <a
+                href="https://facebook.com/YourSchoolPage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform"
+              >
+                <FaFacebookF className="h-6 w-6" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform">
-                <Instagram className="h-6 w-6" />
+              <a
+                href="https://instagram.com/YourSchoolPage"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-pink-400 transition-colors hover:-translate-y-1 transform"
+              >
+                <FaInstagram className="h-6 w-6" />
               </a>
-              <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform">
-                <Youtube className="h-6 w-6" />
-              </a>
-              <a href="#" className="text-gray-300 hover:text-blue-400 transition-colors hover:-translate-y-1 transform">
-                <Linkedin className="h-6 w-6" />
+              <a
+                href="https://youtube.com/@YourSchoolChannel"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-gray-300 hover:text-red-500 transition-colors hover:-translate-y-1 transform"
+              >
+                <FaYoutube className="h-6 w-6" />
               </a>
             </div>
           </div>
@@ -72,30 +87,12 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-700 inline-block">Quick Links</h3>
             <ul className="space-y-3">
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                About Us
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Admissions
-              </a></li>
-              <li><a href="/gallery" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Photo Gallery
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Academic Programs
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Faculty
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Contact
-              </a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">About Us</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Admissions</a></li>
+              <li><a href="/gallery" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Photo Gallery</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Academic Programs</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Faculty</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Contact</a></li>
             </ul>
           </div>
 
@@ -103,35 +100,17 @@ export default function Footer() {
           <div>
             <h3 className="text-xl font-semibold mb-6 pb-2 border-b border-gray-700 inline-block">Resources</h3>
             <ul className="space-y-3">
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Student Portal
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Parent Portal
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Library
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Calendar
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Support
-              </a></li>
-              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">
-                <span className="w-2 h-2 bg-blue-400 rounded-full mr-3 opacity-0 group-hover:opacity-100 transition-opacity"></span>
-                Careers
-              </a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Student Portal</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Parent Portal</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Library</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Calendar</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Support</a></li>
+              <li><a href="#" className="text-gray-300 hover:text-blue-400 transition-colors flex items-center group">Careers</a></li>
             </ul>
           </div>
         </div>
 
-        {/* Back to Top Button */}
+        {/* Back to Top */}
         <div className="text-center mt-14">
           <a 
             href="#" 
@@ -142,7 +121,7 @@ export default function Footer() {
           </a>
         </div>
 
-        {/* Copyright Section */}
+        {/* Copyright */}
         <div className="border-t border-gray-700 mt-10 pt-8 text-center text-gray-400">
           <p className="text-sm md:text-base">
             &copy; {new Date().getFullYear()} MOM SCHOOL OF EXCELLENCY. All rights reserved. 
