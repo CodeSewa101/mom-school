@@ -1,162 +1,177 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
-  Camera, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Upload,
-  X,
-  ChevronLeft,
-  ChevronRight,
-  Filter
+  Camera, Plus, Edit, Trash2, Upload, X, ChevronLeft, ChevronRight, Filter, Loader2 
 } from 'lucide-react';
 import { 
-  collection, 
-  getDocs, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  orderBy 
+  collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy 
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { uploadToCloudinary } from '../../config/cloudinary';
 import toast from 'react-hot-toast';
 
+const categories = [
+  { value: 'events', label: '🎉 Events', emoji: '🎉' },
+  { value: 'memories', label: '📸 Memories', emoji: '📸' },
+  { value: 'sports', label: '⚽ Sports', emoji: '⚽' },
+  { value: 'achievement', label: '🏅 Achievement', emoji: '🏅' },
+  { value: 'others', label: '📷 Others', emoji: '📷' }
+];
+
+const PLACEHOLDER_IMAGE = '/placeholder.jpg';
+
 export default function PhotoGallery() {
-  const [albums, setAlbums] = useState([]);
-  const [photos, setPhotos] = useState([]);
-  const [filteredPhotos, setFilteredPhotos] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [showAddAlbumModal, setShowAddAlbumModal] = useState(false);
-  const [showAddPhotoModal, setShowAddPhotoModal] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false);
-  const [selectedImage, setSelectedImage] = useState(null);
-  const [selectedAlbum, setSelectedAlbum] = useState('all');
-  const [uploading, setUploading] = useState(false);
-  const [editingAlbum, setEditingAlbum] = useState(null);
-
-  const [albumFormData, setAlbumFormData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    coverImage: ''
+  // State management
+  const [state, setState] = useState({
+    albums: [],
+    photos: [],
+    filteredPhotos: [],
+    loading: true,
+    uploading: false,
+    selectedAlbum: 'all',
+    selectedImage: null,
+    editingAlbum: null
   });
 
-  const [photoFormData, setPhotoFormData] = useState({
-    title: '',
-    description: '',
-    albumId: '',
-    imageUrl: '',
-    tags: []
+  const [modals, setModals] = useState({
+    addAlbum: false,
+    addPhoto: false,
+    imageView: false
   });
 
-  const categories = [
-    { value: 'events', label: '🎉 Events', emoji: '🎉' },
-    { value: 'memories', label: '📸 Memories', emoji: '📸' },
-    { value: 'sports', label: '⚽ Sports', emoji: '⚽' },
-    { value: 'achievement', label: '🏅 Achievement', emoji: '🏅' },
-    { value: 'others', label: '📷 Others', emoji: '📷' }
-  ];
+  const [forms, setForms] = useState({
+    album: {
+      name: '',
+      description: '',
+      category: '',
+      coverImage: ''
+    },
+    photo: {
+      title: '',
+      description: '',
+      albumId: '',
+      imageUrl: '',
+      tags: []
+    }
+  });
 
-  useEffect(() => {
-    fetchAlbums();
-    fetchPhotos();
-  }, []);
+  // Custom Image Component for Vite
+  const ImageDisplay = ({ src, alt, className, onClick }) => {
+    const [imageSrc, setImageSrc] = useState(src || PLACEHOLDER_IMAGE);
+    
+    const handleError = () => {
+      console.error('Failed to load image:', src);
+      setImageSrc(PLACEHOLDER_IMAGE);
+    };
+    
+    return (
+      <img
+        src={imageSrc}
+        alt={alt}
+        className={`object-cover ${className}`}
+        onClick={onClick}
+        onError={handleError}
+        loading="lazy"
+      />
+    );
+  };
 
-  useEffect(() => {
-    filterPhotos();
-  }, [photos, selectedAlbum]);
-
-  const fetchAlbums = async () => {
+  // Data fetching
+  const fetchAlbums = useCallback(async () => {
     try {
-      const albumsRef = collection(db, 'albums');
-      const q = query(albumsRef, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      
-      const albumData = [];
-      snapshot.forEach((doc) => {
-        albumData.push({ id: doc.id, ...doc.data() });
-      });
-      
-      setAlbums(albumData);
+      const snapshot = await getDocs(
+        query(collection(db, 'albums'), orderBy('createdAt', 'desc'))
+      );
+      setState(prev => ({
+        ...prev,
+        albums: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }))
+      }));
     } catch (error) {
       console.error('Error fetching albums:', error);
       toast.error('Failed to fetch albums');
     }
-  };
+  }, []);
 
-  const fetchPhotos = async () => {
+  const fetchPhotos = useCallback(async () => {
     try {
-      const photosRef = collection(db, 'photos');
-      const q = query(photosRef, orderBy('createdAt', 'desc'));
-      const snapshot = await getDocs(q);
-      
-      const photoData = [];
-      snapshot.forEach((doc) => {
-        photoData.push({ id: doc.id, ...doc.data() });
-      });
-      
-      setPhotos(photoData);
-      setLoading(false);
+      const snapshot = await getDocs(
+        query(collection(db, 'photos'), orderBy('createdAt', 'desc'))
+      );
+      setState(prev => ({
+        ...prev,
+        photos: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+        loading: false
+      }));
     } catch (error) {
       console.error('Error fetching photos:', error);
       toast.error('Failed to fetch photos');
-      setLoading(false);
+      setState(prev => ({ ...prev, loading: false }));
     }
-  };
+  }, []);
 
-  const filterPhotos = () => {
-    if (selectedAlbum === 'all') {
-      setFilteredPhotos(photos);
-    } else {
-      setFilteredPhotos(photos.filter(photo => photo.albumId === selectedAlbum));
-    }
-  };
+  // Initial data load
+  useEffect(() => {
+    const loadData = async () => {
+      await Promise.all([fetchAlbums(), fetchPhotos()]);
+    };
+    loadData();
+  }, [fetchAlbums, fetchPhotos]);
 
-  const handleAlbumInputChange = (e) => {
-    const { name, value } = e.target;
-    setAlbumFormData(prev => ({
+  // Filter photos
+  useEffect(() => {
+    setState(prev => ({
       ...prev,
-      [name]: value
+      filteredPhotos: prev.selectedAlbum === 'all' 
+        ? prev.photos 
+        : prev.photos.filter(photo => photo.albumId === prev.selectedAlbum)
+    }));
+  }, [state.photos, state.selectedAlbum]);
+
+  // Handlers
+  const handleInputChange = (formType, e) => {
+    const { name, value } = e.target;
+    setForms(prev => ({
+      ...prev,
+      [formType]: {
+        ...prev[formType],
+        [name]: value
+      }
     }));
   };
 
-  const handlePhotoInputChange = (e) => {
-    const { name, value } = e.target;
-    setPhotoFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  const handleImageUpload = async (e, type) => {
+  const handleImageUpload = async (formType, e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    setUploading(true);
+    if (!file.type.match('image.*')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size must be less than 5MB');
+      return;
+    }
+
+    setState(prev => ({ ...prev, uploading: true }));
+
     try {
       const imageUrl = await uploadToCloudinary(file);
-      
-      if (type === 'album') {
-        setAlbumFormData(prev => ({
-          ...prev,
-          coverImage: imageUrl
-        }));
-      } else {
-        setPhotoFormData(prev => ({
-          ...prev,
-          imageUrl: imageUrl
-        }));
-      }
-      
+      if (!imageUrl) throw new Error('Upload failed');
+
+      setForms(prev => ({
+        ...prev,
+        [formType]: {
+          ...prev[formType],
+          [formType === 'album' ? 'coverImage' : 'imageUrl']: imageUrl
+        }
+      }));
+
       toast.success('Image uploaded successfully');
     } catch (error) {
-      console.error('Error uploading image:', error);
-      toast.error('Failed to upload image');
+      console.error('Upload error:', error);
+      toast.error(error.message || 'Upload failed');
     } finally {
-      setUploading(false);
+      setState(prev => ({ ...prev, uploading: false }));
     }
   };
 
@@ -165,24 +180,22 @@ export default function PhotoGallery() {
     
     try {
       const albumData = {
-        ...albumFormData,
-        updatedAt: new Date()
+        ...forms.album,
+        updatedAt: new Date(),
+        createdAt: state.editingAlbum ? forms.album.createdAt : new Date(),
+        photoCount: state.editingAlbum ? forms.album.photoCount : 0
       };
 
-      if (editingAlbum) {
-        await updateDoc(doc(db, 'albums', editingAlbum.id), albumData);
+      if (state.editingAlbum) {
+        await updateDoc(doc(db, 'albums', state.editingAlbum.id), albumData);
         toast.success('Album updated successfully');
       } else {
-        await addDoc(collection(db, 'albums'), {
-          ...albumData,
-          createdAt: new Date(),
-          photoCount: 0
-        });
+        await addDoc(collection(db, 'albums'), albumData);
         toast.success('Album created successfully');
       }
-      
-      resetAlbumForm();
-      fetchAlbums();
+
+      resetForm('album');
+      await fetchAlbums();
     } catch (error) {
       console.error('Error saving album:', error);
       toast.error('Failed to save album');
@@ -193,324 +206,332 @@ export default function PhotoGallery() {
     e.preventDefault();
     
     try {
+      if (!forms.photo.imageUrl) throw new Error('Image is required');
+      if (!forms.photo.albumId) throw new Error('Album selection is required');
+
       await addDoc(collection(db, 'photos'), {
-        ...photoFormData,
+        ...forms.photo,
         createdAt: new Date()
       });
-      
-      // Update album photo count
-      const album = albums.find(a => a.id === photoFormData.albumId);
+
+      const album = state.albums.find(a => a.id === forms.photo.albumId);
       if (album) {
         await updateDoc(doc(db, 'albums', album.id), {
           photoCount: (album.photoCount || 0) + 1,
           updatedAt: new Date()
         });
       }
-      
+
+      resetForm('photo');
+      await Promise.all([fetchPhotos(), fetchAlbums()]);
       toast.success('Photo added successfully');
-      resetPhotoForm();
-      fetchPhotos();
-      fetchAlbums();
     } catch (error) {
       console.error('Error saving photo:', error);
-      toast.error('Failed to save photo');
+      toast.error(error.message || 'Failed to save photo');
     }
   };
 
-  const handleEditAlbum = (album) => {
-    setEditingAlbum(album);
-    setAlbumFormData(album);
-    setShowAddAlbumModal(true);
-  };
-
-  const handleDeleteAlbum = async (albumId) => {
-    if (!window.confirm('Are you sure you want to delete this album? All photos in this album will also be deleted.')) return;
-    
-    try {
-      // Delete all photos in the album
-      const albumPhotos = photos.filter(photo => photo.albumId === albumId);
-      for (const photo of albumPhotos) {
-        await deleteDoc(doc(db, 'photos', photo.id));
-      }
-      
-      // Delete the album
-      await deleteDoc(doc(db, 'albums', albumId));
-      
-      toast.success('Album deleted successfully');
-      fetchAlbums();
-      fetchPhotos();
-    } catch (error) {
-      console.error('Error deleting album:', error);
-      toast.error('Failed to delete album');
-    }
-  };
-
-  const handleDeletePhoto = async (photoId) => {
-    if (!window.confirm('Are you sure you want to delete this photo?')) return;
-    
-    try {
-      const photo = photos.find(p => p.id === photoId);
-      await deleteDoc(doc(db, 'photos', photoId));
-      
-      // Update album photo count
-      if (photo && photo.albumId) {
-        const album = albums.find(a => a.id === photo.albumId);
-        if (album && album.photoCount > 0) {
-          await updateDoc(doc(db, 'albums', album.id), {
-            photoCount: album.photoCount - 1,
-            updatedAt: new Date()
-          });
-        }
-      }
-      
-      toast.success('Photo deleted successfully');
-      fetchPhotos();
-      fetchAlbums();
-    } catch (error) {
-      console.error('Error deleting photo:', error);
-      toast.error('Failed to delete photo');
-    }
-  };
-
-  const resetAlbumForm = () => {
-    setAlbumFormData({
-      name: '',
-      description: '',
-      category: '',
-      coverImage: ''
-    });
-    setEditingAlbum(null);
-    setShowAddAlbumModal(false);
-  };
-
-  const resetPhotoForm = () => {
-    setPhotoFormData({
-      title: '',
-      description: '',
-      albumId: '',
-      imageUrl: '',
-      tags: []
-    });
-    setShowAddPhotoModal(false);
-  };
-
-  const openImageModal = (photo) => {
-    setSelectedImage(photo);
-    setShowImageModal(true);
+  // Helper functions
+  const resetForm = (formType) => {
+    setForms(prev => ({
+      ...prev,
+      [formType]: formType === 'album' 
+        ? { name: '', description: '', category: '', coverImage: '' }
+        : { title: '', description: '', albumId: '', imageUrl: '', tags: [] }
+    }));
+    setModals(prev => ({ ...prev, [formType === 'album' ? 'addAlbum' : 'addPhoto']: false }));
+    setState(prev => ({ ...prev, editingAlbum: null }));
   };
 
   const getCategoryConfig = (category) => {
     return categories.find(c => c.value === category) || categories[categories.length - 1];
   };
 
-  if (loading) {
+  const openImageModal = (photo) => {
+    setState(prev => ({ ...prev, selectedImage: photo }));
+    setModals(prev => ({ ...prev, imageView: true }));
+  };
+
+  if (state.loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-64"></div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-lg p-6 h-64"></div>
-              ))}
-            </div>
-          </div>
-        </div>
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-blue-600" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Photo Gallery</h1>
-            <p className="text-gray-600 mt-2">Manage school photos and albums</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">Photo Gallery</h1>
+            <p className="text-gray-600 mt-1 md:mt-2">Manage school photos and albums</p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap gap-2 w-full md:w-auto">
             <button
-              onClick={() => setShowAddAlbumModal(true)}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              onClick={() => setModals(prev => ({ ...prev, addAlbum: true }))}
+              className="bg-green-600 text-white px-3 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center gap-2 text-sm md:text-base"
             >
               <Plus className="h-4 w-4" />
               <span>Add Album</span>
             </button>
             <button
-              onClick={() => setShowAddPhotoModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              onClick={() => setModals(prev => ({ ...prev, addPhoto: true }))}
+              className="bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2 text-sm md:text-base"
             >
               <Camera className="h-4 w-4" />
               <span>Add Photo</span>
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Albums Section */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">Albums</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-            {albums.map((album) => {
-              const categoryConfig = getCategoryConfig(album.category);
-              return (
-                <div key={album.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
-                  <div className="relative h-48">
-                    <img
-                      src={album.coverImage || 'https://images.pexels.com/photos/1181533/pexels-photo-1181533.jpeg?auto=compress&cs=tinysrgb&w=400'}
-                      alt={album.name}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute top-2 left-2">
-                      <span className="bg-white bg-opacity-90 px-2 py-1 rounded-full text-sm">
-                        {categoryConfig.emoji}
-                      </span>
+        <section className="mb-12">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">Albums</h2>
+          {state.albums.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+              {state.albums.map((album) => {
+                const categoryConfig = getCategoryConfig(album.category);
+                return (
+                  <article key={album.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow">
+                    <div className="relative h-48">
+                      <ImageDisplay 
+                        src={album.coverImage} 
+                        alt={album.name} 
+                        className="w-full h-full"
+                      />
+                      <div className="absolute top-2 left-2">
+                        <span className="bg-white bg-opacity-90 px-2 py-1 rounded-full text-sm">
+                          {categoryConfig.emoji}
+                        </span>
+                      </div>
+                      <div className="absolute top-2 right-2 flex gap-1">
+                        <button
+                          onClick={() => {
+                            setForms(prev => ({ ...prev, album }));
+                            setState(prev => ({ ...prev, editingAlbum: album }));
+                            setModals(prev => ({ ...prev, addAlbum: true }));
+                          }}
+                          className="bg-white bg-opacity-90 p-1 rounded-full hover:bg-opacity-100 transition-all"
+                          aria-label={`Edit ${album.name}`}
+                        >
+                          <Edit className="h-4 w-4 text-gray-600" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (window.confirm(`Delete "${album.name}" album? All photos will be removed.`)) {
+                              try {
+                                const albumPhotos = state.photos.filter(p => p.albumId === album.id);
+                                await Promise.all(
+                                  albumPhotos.map(p => deleteDoc(doc(db, 'photos', p.id)))
+                                );
+                                await deleteDoc(doc(db, 'albums', album.id));
+                                await Promise.all([fetchAlbums(), fetchPhotos()]);
+                                toast.success('Album deleted successfully');
+                              } catch (error) {
+                                console.error('Delete error:', error);
+                                toast.error('Failed to delete album');
+                              }
+                            }
+                          }}
+                          className="bg-white bg-opacity-90 p-1 rounded-full hover:bg-opacity-100 transition-all"
+                          aria-label={`Delete ${album.name}`}
+                        >
+                          <Trash2 className="h-4 w-4 text-red-600" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="absolute top-2 right-2 flex space-x-1">
-                      <button
-                        onClick={() => handleEditAlbum(album)}
-                        className="bg-white bg-opacity-90 p-1 rounded-full hover:bg-opacity-100 transition-all"
-                      >
-                        <Edit className="h-4 w-4 text-gray-600" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteAlbum(album.id)}
-                        className="bg-white bg-opacity-90 p-1 rounded-full hover:bg-opacity-100 transition-all"
-                      >
-                        <Trash2 className="h-4 w-4 text-red-600" />
-                      </button>
+                    <div className="p-4">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-1">{album.name}</h3>
+                      <p className="text-gray-600 text-sm mb-3 line-clamp-2">{album.description}</p>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">
+                          {album.photoCount || 0} photos
+                        </span>
+                        <button
+                          onClick={() => setState(prev => ({ ...prev, selectedAlbum: album.id }))}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          View Photos
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{album.name}</h3>
-                    <p className="text-gray-600 text-sm mb-3 line-clamp-2">{album.description}</p>
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">
-                        {album.photoCount || 0} photos
-                      </span>
-                      <button
-                        onClick={() => setSelectedAlbum(album.id)}
-                        className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                      >
-                        View Photos
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+                  </article>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+              <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No albums found</h3>
+              <p className="text-gray-600 mb-4">Create your first album to get started</p>
+              <button
+                onClick={() => setModals(prev => ({ ...prev, addAlbum: true }))}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Create Album
+              </button>
+            </div>
+          )}
+        </section>
 
         {/* Photos Section */}
-        <div>
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-gray-900">Photos</h2>
-            <div className="flex items-center space-x-4">
+        <section>
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-6 gap-4">
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Photos</h2>
+            <div className="flex items-center gap-4 w-full md:w-auto">
               <select
-                value={selectedAlbum}
-                onChange={(e) => setSelectedAlbum(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={state.selectedAlbum}
+                onChange={(e) => setState(prev => ({ ...prev, selectedAlbum: e.target.value }))}
+                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm md:text-base w-full md:w-auto"
               >
                 <option value="all">All Albums</option>
-                {albums.map(album => (
+                {state.albums.map(album => (
                   <option key={album.id} value={album.id}>{album.name}</option>
                 ))}
               </select>
-              <span className="text-sm text-gray-600">
-                {filteredPhotos.length} photos
+              <span className="text-sm text-gray-600 whitespace-nowrap">
+                {state.filteredPhotos.length} photos
               </span>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-            {filteredPhotos.map((photo) => (
-              <div key={photo.id} className="relative group">
-                <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
-                  <img
-                    src={photo.imageUrl}
-                    alt={photo.title}
-                    className="w-full h-full object-cover cursor-pointer hover:scale-105 transition-transform"
-                    onClick={() => openImageModal(photo)}
-                  />
-                </div>
-                <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex space-x-2">
-                    <button
+          {state.filteredPhotos.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+              {state.filteredPhotos.map((photo) => (
+                <div key={photo.id} className="relative group">
+                  <div className="aspect-square bg-gray-200 rounded-lg overflow-hidden">
+                    <ImageDisplay
+                      src={photo.imageUrl}
+                      alt={photo.title || 'Gallery photo'}
+                      className="w-full h-full"
                       onClick={() => openImageModal(photo)}
-                      className="bg-white text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                    >
-                      <Camera className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDeletePhoto(photo.id)}
-                      className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    />
                   </div>
+                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 transition-all rounded-lg flex items-center justify-center">
+                    <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                      <button
+                        onClick={() => openImageModal(photo)}
+                        className="bg-white text-gray-800 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                        aria-label="View photo"
+                      >
+                        <Camera className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={async () => {
+                          if (window.confirm('Delete this photo?')) {
+                            try {
+                              await deleteDoc(doc(db, 'photos', photo.id));
+                              
+                              if (photo.albumId) {
+                                const album = state.albums.find(a => a.id === photo.albumId);
+                                if (album && album.photoCount > 0) {
+                                  await updateDoc(doc(db, 'albums', album.id), {
+                                    photoCount: album.photoCount - 1,
+                                    updatedAt: new Date()
+                                  });
+                                }
+                              }
+                              
+                              await Promise.all([fetchPhotos(), fetchAlbums()]);
+                              toast.success('Photo deleted successfully');
+                            } catch (error) {
+                              console.error('Delete error:', error);
+                              toast.error('Failed to delete photo');
+                            }
+                          }
+                        }}
+                        className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors"
+                        aria-label="Delete photo"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                  {photo.title && (
+                    <p className="mt-2 text-sm text-gray-600 truncate">{photo.title}</p>
+                  )}
                 </div>
-                {photo.title && (
-                  <p className="mt-2 text-sm text-gray-600 truncate">{photo.title}</p>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {filteredPhotos.length === 0 && (
-            <div className="text-center py-12">
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-white rounded-lg shadow-sm">
               <Camera className="h-12 w-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 mb-2">No photos found</h3>
-              <p className="text-gray-600">Add some photos to get started.</p>
+              <p className="text-gray-600 mb-4">
+                {state.selectedAlbum === 'all' 
+                  ? 'Add some photos to get started' 
+                  : 'This album has no photos yet'}
+              </p>
+              <button
+                onClick={() => setModals(prev => ({ ...prev, addPhoto: true }))}
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Add Photo
+              </button>
             </div>
           )}
-        </div>
+        </section>
 
         {/* Add Album Modal */}
-        {showAddAlbumModal && (
+        {modals.addAlbum && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {editingAlbum ? 'Edit Album' : 'Create New Album'}
-                </h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+                    {state.editingAlbum ? 'Edit Album' : 'Create New Album'}
+                  </h2>
+                  <button
+                    onClick={() => resetForm('album')}
+                    className="text-gray-500 hover:text-gray-700"
+                    aria-label="Close modal"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
                 
                 <form onSubmit={handleAlbumSubmit} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="album-name" className="block text-sm font-medium text-gray-700 mb-2">
                       Album Name *
                     </label>
                     <input
+                      id="album-name"
                       type="text"
                       name="name"
-                      value={albumFormData.name}
-                      onChange={handleAlbumInputChange}
+                      value={forms.album.name}
+                      onChange={(e) => handleInputChange('album', e)}
                       required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="album-description" className="block text-sm font-medium text-gray-700 mb-2">
                       Description
                     </label>
                     <textarea
+                      id="album-description"
                       name="description"
-                      value={albumFormData.description}
-                      onChange={handleAlbumInputChange}
+                      value={forms.album.description}
+                      onChange={(e) => handleInputChange('album', e)}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="album-category" className="block text-sm font-medium text-gray-700 mb-2">
                       Category *
                     </label>
                     <select
+                      id="album-category"
                       name="category"
-                      value={albumFormData.category}
-                      onChange={handleAlbumInputChange}
+                      value={forms.album.category}
+                      onChange={(e) => handleInputChange('album', e)}
                       required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
@@ -527,46 +548,54 @@ export default function PhotoGallery() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Cover Image
                     </label>
-                    <div className="flex items-center space-x-4">
-                      {albumFormData.coverImage && (
-                        <img
-                          src={albumFormData.coverImage}
-                          alt="Cover"
-                          className="h-20 w-20 rounded-lg object-cover"
-                        />
+                    <div className="flex items-center gap-4">
+                      {forms.album.coverImage && (
+                        <div className="relative h-20 w-20 rounded-lg overflow-hidden">
+                          <ImageDisplay 
+                            src={forms.album.coverImage} 
+                            alt="Album cover" 
+                            className="h-full w-full"
+                          />
+                        </div>
                       )}
                       <div>
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => handleImageUpload(e, 'album')}
+                          onChange={(e) => handleImageUpload('album', e)}
                           className="hidden"
                           id="album-cover-upload"
                         />
                         <label
                           htmlFor="album-cover-upload"
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center space-x-2"
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2"
+                          disabled={state.uploading}
                         >
-                          <Upload className="h-4 w-4" />
-                          <span>{uploading ? 'Uploading...' : 'Upload Cover'}</span>
+                          {state.uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          <span>Upload Cover</span>
                         </label>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-4">
+                  <div className="flex justify-end gap-4">
                     <button
                       type="button"
-                      onClick={resetAlbumForm}
+                      onClick={() => resetForm('album')}
                       className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!forms.album.name || !forms.album.category || state.uploading}
                     >
-                      {editingAlbum ? 'Update Album' : 'Create Album'}
+                      {state.editingAlbum ? 'Update Album' : 'Create Album'}
                     </button>
                   </div>
                 </form>
@@ -576,100 +605,120 @@ export default function PhotoGallery() {
         )}
 
         {/* Add Photo Modal */}
-        {showAddPhotoModal && (
+        {modals.addPhoto && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">Add New Photo</h2>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-xl md:text-2xl font-bold text-gray-900">Add New Photo</h2>
+                  <button
+                    onClick={() => resetForm('photo')}
+                    className="text-gray-500 hover:text-gray-700"
+                    aria-label="Close modal"
+                  >
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
                 
                 <form onSubmit={handlePhotoSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Photo *
                     </label>
-                    <div className="flex items-center space-x-4">
-                      {photoFormData.imageUrl && (
-                        <img
-                          src={photoFormData.imageUrl}
-                          alt="Preview"
-                          className="h-32 w-32 rounded-lg object-cover"
-                        />
+                    <div className="flex items-center gap-4">
+                      {forms.photo.imageUrl && (
+                        <div className="relative h-32 w-32 rounded-lg overflow-hidden">
+                          <ImageDisplay 
+                            src={forms.photo.imageUrl} 
+                            alt="Photo preview" 
+                            className="h-full w-full"
+                          />
+                        </div>
                       )}
                       <div>
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={(e) => handleImageUpload(e, 'photo')}
+                          onChange={(e) => handleImageUpload('photo', e)}
                           className="hidden"
                           id="photo-upload"
                         />
                         <label
                           htmlFor="photo-upload"
-                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center space-x-2"
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center gap-2"
+                          disabled={state.uploading}
                         >
-                          <Upload className="h-4 w-4" />
-                          <span>{uploading ? 'Uploading...' : 'Upload Photo'}</span>
+                          {state.uploading ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                          <span>Upload Photo</span>
                         </label>
+                        <p className="text-xs text-gray-500 mt-2">Max 5MB, JPG/PNG</p>
                       </div>
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="photo-album" className="block text-sm font-medium text-gray-700 mb-2">
                       Album *
                     </label>
                     <select
+                      id="photo-album"
                       name="albumId"
-                      value={photoFormData.albumId}
-                      onChange={handlePhotoInputChange}
+                      value={forms.photo.albumId}
+                      onChange={(e) => handleInputChange('photo', e)}
                       required
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select Album</option>
-                      {albums.map(album => (
+                      {state.albums.map(album => (
                         <option key={album.id} value={album.id}>{album.name}</option>
                       ))}
                     </select>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="photo-title" className="block text-sm font-medium text-gray-700 mb-2">
                       Title
                     </label>
                     <input
+                      id="photo-title"
                       type="text"
                       name="title"
-                      value={photoFormData.title}
-                      onChange={handlePhotoInputChange}
+                      value={forms.photo.title}
+                      onChange={(e) => handleInputChange('photo', e)}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="photo-description" className="block text-sm font-medium text-gray-700 mb-2">
                       Description
                     </label>
                     <textarea
+                      id="photo-description"
                       name="description"
-                      value={photoFormData.description}
-                      onChange={handlePhotoInputChange}
+                      value={forms.photo.description}
+                      onChange={(e) => handleInputChange('photo', e)}
                       rows={3}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     />
                   </div>
 
-                  <div className="flex justify-end space-x-4">
+                  <div className="flex justify-end gap-4">
                     <button
                       type="button"
-                      onClick={resetPhotoForm}
+                      onClick={() => resetForm('photo')}
                       className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      disabled={!photoFormData.imageUrl || !photoFormData.albumId}
                       className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={!forms.photo.imageUrl || !forms.photo.albumId || state.uploading}
                     >
                       Add Photo
                     </button>
@@ -680,28 +729,33 @@ export default function PhotoGallery() {
           </div>
         )}
 
-        {/* Image Modal */}
-        {showImageModal && selectedImage && (
+        {/* Image View Modal */}
+        {modals.imageView && state.selectedImage && (
           <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
-            <div className="relative max-w-4xl max-h-full">
+            <div className="relative max-w-4xl w-full max-h-[90vh]">
               <button
-                onClick={() => setShowImageModal(false)}
-                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10"
+                onClick={() => setModals(prev => ({ ...prev, imageView: false }))}
+                className="absolute top-4 right-4 text-white hover:text-gray-300 z-10 bg-black bg-opacity-50 p-2 rounded-full"
+                aria-label="Close modal"
               >
-                <X className="h-8 w-8" />
+                <X className="h-6 w-6" />
               </button>
               
-              <img
-                src={selectedImage.imageUrl}
-                alt={selectedImage.title}
-                className="max-w-full max-h-full object-contain"
-              />
+              <div className="relative h-full w-full">
+                <ImageDisplay
+                  src={state.selectedImage.imageUrl}
+                  alt={state.selectedImage.title || 'Gallery photo'}
+                  className="max-w-full max-h-[80vh] object-contain mx-auto"
+                />
+              </div>
               
-              {selectedImage.title && (
+              {(state.selectedImage.title || state.selectedImage.description) && (
                 <div className="absolute bottom-4 left-4 right-4 bg-black bg-opacity-50 text-white p-4 rounded-lg">
-                  <h3 className="text-lg font-semibold mb-2">{selectedImage.title}</h3>
-                  {selectedImage.description && (
-                    <p className="text-sm opacity-90">{selectedImage.description}</p>
+                  {state.selectedImage.title && (
+                    <h3 className="text-lg font-semibold mb-2">{state.selectedImage.title}</h3>
+                  )}
+                  {state.selectedImage.description && (
+                    <p className="text-sm opacity-90">{state.selectedImage.description}</p>
                   )}
                 </div>
               )}
