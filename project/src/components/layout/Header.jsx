@@ -83,7 +83,7 @@ export default function Header() {
                 />
               </div>
 
-              <div className="hidden sm:block relative ml-3">
+              <div className="block relative ml-3 text-center sm:text-left">
                 <motion.h1 className="font-bold text-xl tracking-tight">
                   <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     MOM SCHOOL OF EXCELLENCY

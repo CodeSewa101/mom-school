@@ -1,5 +1,8 @@
 import { Users, Award, BookOpen, Heart, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
+import aboutus1 from "../image/aboutus1.jpeg";
+import aboutus2 from "../image/aboutus2.jpg";
+
 
 export default function About() {
   const values = [
@@ -130,9 +133,9 @@ export default function About() {
             >
               <div className="relative rounded-3xl overflow-hidden shadow-2xl border-8 border-white">
                 <img
-                  src="https://images.pexels.com/photos/1516440/pexels-photo-1516440.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                  src={aboutus1}
                   alt="Students learning"
-                  className="w-full h-auto object-cover aspect-video"
+                  className="w-full h-auto object-cover sm:aspect-[4/3]"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 p-6 text-white">
@@ -211,9 +214,9 @@ export default function About() {
             >
               <div className="relative rounded-[2rem] overflow-hidden shadow-2xl border-8 border-white rotate-1">
                 <img
-                  src="https://images.pexels.com/photos/159844/cellular-education-classroom-159844.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2"
+                  src={aboutus2}
                   alt="School building"
-                  className="w-full h-auto object-cover aspect-square"
+                  className="w-full h-auto object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent"></div>
                 <div className="absolute bottom-0 left-0 p-6 text-white">
