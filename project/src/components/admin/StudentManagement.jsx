@@ -94,6 +94,10 @@ export default function StudentManagement() {
   });
 
   const [formErrors, setFormErrors] = useState({
+    phone: '',
+    birthDate: '',
+    parentName: '',
+    parentPhone: '',
     password: '',
     confirmPassword: ''
   });
@@ -194,7 +198,9 @@ export default function StudentManagement() {
     }));
 
     // Clear error when user starts typing
-    if (name === 'password' || name === 'confirmPassword') {
+    if (name === 'password' || name === 'confirmPassword' || 
+        name === 'phone' || name === 'birthDate' || 
+        name === 'parentName' || name === 'parentPhone') {
       setFormErrors(prev => ({
         ...prev,
         [name]: ''
@@ -204,6 +210,23 @@ export default function StudentManagement() {
 
   const validateForm = () => {
     const errors = {};
+    
+    // Validate required fields
+    if (!formData.phone.trim()) {
+      errors.phone = 'Phone number is required';
+    }
+    
+    if (!formData.birthDate) {
+      errors.birthDate = 'Birth date is required';
+    }
+    
+    if (!formData.parentName.trim()) {
+      errors.parentName = 'Parent/Guardian name is required';
+    }
+    
+    if (!formData.parentPhone.trim()) {
+      errors.parentPhone = 'Parent phone number is required';
+    }
     
     // Only validate password fields when adding a new student
     if (!editingStudent) {
@@ -243,8 +266,7 @@ export default function StudentManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate form only for new students
-    if (!editingStudent && !validateForm()) {
+    if (!validateForm()) {
       toast.error('Please fix the form errors');
       return;
     }
@@ -328,6 +350,10 @@ export default function StudentManagement() {
       confirmPassword: ''
     });
     setFormErrors({
+      phone: '',
+      birthDate: '',
+      parentName: '',
+      parentPhone: '',
       password: '',
       confirmPassword: ''
     });
@@ -663,7 +689,7 @@ export default function StudentManagement() {
               <button
                 onClick={() => paginate(currentPage + 1)}
                 disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
-                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
+                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text極端な例ではありますが、このような状況では、適切な対応が求められます。' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
@@ -761,28 +787,36 @@ export default function StudentManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone
+                        Phone *
                       </label>
                       <input
                         type="tel"
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
+                      {formErrors.phone && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Birth Date
+                        Birth Date *
                       </label>
                       <input
                         type="date"
                         name="birthDate"
                         value={formData.birthDate}
                         onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
+                      {formErrors.birthDate && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.birthDate}</p>
+                      )}
                     </div>
 
                     {/* Password Fields - Only show for new students */}
@@ -921,28 +955,36 @@ export default function StudentManagement() {
                     {/* Parent Information */}
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Parent/Guardian Name
+                        Parent/Guardian Name *
                       </label>
                       <input
                         type="text"
                         name="parentName"
                         value={formData.parentName}
                         onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
+                      {formErrors.parentName && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.parentName}</p>
+                      )}
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Parent Phone
+                        Parent Phone *
                       </label>
                       <input
                         type="tel"
                         name="parentPhone"
                         value={formData.parentPhone}
                         onChange={handleInputChange}
+                        required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
+                      {formErrors.parentPhone && (
+                        <p className="mt-1 text-sm text-red-600">{formErrors.parentPhone}</p>
+                      )}
                     </div>
 
                     <div>
