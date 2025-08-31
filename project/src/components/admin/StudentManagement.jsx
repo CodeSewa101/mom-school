@@ -13,7 +13,13 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
-  ChevronsRight
+  ChevronsRight,
+  Eye,
+  EyeOff,
+  BookOpen,
+  Calendar,
+  Phone,
+  Mail
 } from 'lucide-react';
 import { 
   collection, 
@@ -42,6 +48,8 @@ export default function StudentManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterClass, setFilterClass] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -80,7 +88,14 @@ export default function StudentManagement() {
     academicYear: academicYears[0],
     admissionDate: '',
     bloodGroup: '',
-    emergencyContact: ''
+    emergencyContact: '',
+    password: '',
+    confirmPassword: ''
+  });
+
+  const [formErrors, setFormErrors] = useState({
+    password: '',
+    confirmPassword: ''
   });
 
   useEffect(() => {
@@ -177,6 +192,32 @@ export default function StudentManagement() {
       ...prev,
       [name]: value
     }));
+
+    // Clear error when user starts typing
+    if (name === 'password' || name === 'confirmPassword') {
+      setFormErrors(prev => ({
+        ...prev,
+        [name]: ''
+      }));
+    }
+  };
+
+  const validateForm = () => {
+    const errors = {};
+    
+    // Only validate password fields when adding a new student
+    if (!editingStudent) {
+      if (formData.password.length < 6) {
+        errors.password = 'Password must be at least 6 characters';
+      }
+      
+      if (formData.password !== formData.confirmPassword) {
+        errors.confirmPassword = 'Passwords do not match';
+      }
+    }
+    
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handlePhotoUpload = async (e) => {
@@ -202,16 +243,31 @@ export default function StudentManagement() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     
+    // Validate form only for new students
+    if (!editingStudent && !validateForm()) {
+      toast.error('Please fix the form errors');
+      return;
+    }
+    
     try {
+      const studentData = { ...formData };
+      
+      // Remove password fields if editing (we don't want to update password unless specifically changing it)
       if (editingStudent) {
+        delete studentData.password;
+        delete studentData.confirmPassword;
+        
         await updateDoc(doc(db, 'students', editingStudent.id), {
-          ...formData,
+          ...studentData,
           updatedAt: new Date()
         });
         toast.success('Student updated successfully');
       } else {
+        // For new students, include password but remove confirmPassword
+        delete studentData.confirmPassword;
+        
         await addDoc(collection(db, 'students'), {
-          ...formData,
+          ...studentData,
           createdAt: new Date(),
           updatedAt: new Date()
         });
@@ -229,7 +285,11 @@ export default function StudentManagement() {
 
   const handleEdit = (student) => {
     setEditingStudent(student);
-    setFormData(student);
+    setFormData({
+      ...student,
+      password: '', // Clear password fields when editing
+      confirmPassword: ''
+    });
     setShowAddModal(true);
   };
 
@@ -263,10 +323,18 @@ export default function StudentManagement() {
       academicYear: academicYears[0],
       admissionDate: '',
       bloodGroup: '',
-      emergencyContact: ''
+      emergencyContact: '',
+      password: '',
+      confirmPassword: ''
+    });
+    setFormErrors({
+      password: '',
+      confirmPassword: ''
     });
     setEditingStudent(null);
     setShowAddModal(false);
+    setShowPassword(false);
+    setShowConfirmPassword(false);
   };
 
   const promoteStudents = async () => {
@@ -310,11 +378,11 @@ export default function StudentManagement() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
         <div className="max-w-7xl mx-auto">
           <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-64"></div>
-            <div className="bg-white rounded-lg p-6 h-96"></div>
+            <div className="h-8 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg w-64"></div>
+            <div className="bg-white rounded-xl p-6 h-96 shadow-sm"></div>
           </div>
         </div>
       </div>
@@ -328,25 +396,28 @@ export default function StudentManagement() {
   const totalFilteredPages = Math.ceil(filteredStudents.length / studentsPerPage);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Student Management</h1>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <Users className="h-8 w-8 text-indigo-600" />
+              Student Management
+            </h1>
             <p className="text-gray-600 mt-2">Manage student records and information</p>
           </div>
-          <div className="flex space-x-4">
+          <div className="flex flex-wrap gap-3 mt-4 md:mt-0">
             <button
               onClick={promoteStudents}
-              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors flex items-center space-x-2"
+              className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-4 py-2.5 rounded-xl hover:shadow-md transition-all flex items-center space-x-2 shadow-sm"
             >
               <GraduationCap className="h-4 w-4" />
               <span>Promote All</span>
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+              className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2.5 rounded-xl hover:shadow-md transition-all flex items-center space-x-2 shadow-sm"
             >
               <Plus className="h-4 w-4" />
               <span>Add Student</span>
@@ -354,8 +425,49 @@ export default function StudentManagement() {
           </div>
         </div>
 
+        {/* Stats Cards - Updated with different colors */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+          <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                <Users className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium">Total Students</h3>
+                <p className="text-2xl font-bold">{totalStudents}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                <UserPlus className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium">This Year</h3>
+                <p className="text-2xl font-bold">
+                  {students.filter(s => s.academicYear === academicYears[0]).length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-5 rounded-xl shadow-lg text-white">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                <Filter className="h-6 w-6" />
+              </div>
+              <div className="ml-4">
+                <h3 className="text-sm font-medium">Filtered</h3>
+                <p className="text-2xl font-bold">{filteredStudents.length}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="bg-white rounded-xl shadow-sm p-6 mb-6 border border-gray-100">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -364,50 +476,52 @@ export default function StudentManagement() {
                 placeholder="Search students..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2.5 w-full border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
               />
             </div>
             <select
               value={filterClass}
               onChange={(e) => setFilterClass(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
             >
               <option value="">All Classes</option>
               {classes.map(cls => (
                 <option key={cls} value={cls}>Class {cls}</option>
               ))}
             </select>
-            <div className="text-sm text-gray-600 flex items-center">
-              Showing {filteredStudents.length > 0 ? indexOfFirstStudent + 1 : 0}-{Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} students
+            <div className="text-sm text-gray-600 flex items-center justify-center md:justify-end">
+              <span className="bg-gray-100 px-3 py-1.5 rounded-lg">
+                Showing {filteredStudents.length > 0 ? indexOfFirstStudent + 1 : 0}-{Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} students
+              </span>
             </div>
           </div>
         </div>
 
         {/* Students Table */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Student
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Class & Section
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Roll Number
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Academic Year
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Contact
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Parent
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -415,12 +529,12 @@ export default function StudentManagement() {
               <tbody className="bg-white divide-y divide-gray-200">
                 {currentStudents.length > 0 ? (
                   currentStudents.map((student) => (
-                    <tr key={student.id} className="hover:bg-gray-50">
+                    <tr key={student.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           <div className="flex-shrink-0 h-10 w-10">
                             <img
-                              className="h-10 w-10 rounded-full object-cover"
+                              className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
                               src={student.photo || 'https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100'}
                               alt={student.name}
                             />
@@ -432,33 +546,41 @@ export default function StudentManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Class {student.class}</div>
-                        <div className="text-sm text-gray-500">Section {student.section}</div>
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                          Class {student.class}
+                        </span>
+                        <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          Section {student.section}
+                        </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
                         {student.rollNumber}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {student.academicYear}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          {student.academicYear}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                         {student.phone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{student.parentName}</div>
+                        <div className="text-sm font-medium text-gray-900">{student.parentName}</div>
                         <div className="text-sm text-gray-500">{student.parentPhone}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
                           <button
                             onClick={() => handleEdit(student)}
-                            className="text-blue-600 hover:text-blue-900"
+                            className="text-blue-600 hover:text-blue-900 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                            title="Edit student"
                           >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
                             onClick={() => handleDelete(student.id)}
-                            className="text-red-600 hover:text-red-900"
+                            className="text-red-600 hover:text-red-900 p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                            title="Delete student"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -468,8 +590,19 @@ export default function StudentManagement() {
                   ))
                 ) : (
                   <tr>
-                    <td colSpan="7" className="px-6 py-4 text-center text-gray-500">
-                      No students found
+                    <td colSpan="7" className="px-6 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center">
+                        <Users className="h-12 w-12 text-gray-300 mb-3" />
+                        <p className="text-gray-500 text-lg font-medium">No students found</p>
+                        <p className="text-gray-400 mt-1">Try adjusting your search or filter criteria</p>
+                        <button
+                          onClick={() => setShowAddModal(true)}
+                          className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          <span>Add New Student</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
@@ -480,26 +613,26 @@ export default function StudentManagement() {
 
         {/* Pagination */}
         {filteredStudents.length > studentsPerPage && (
-          <div className="flex items-center justify-between mt-4 bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-700">
+          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
+            <div className="text-sm text-gray-700 mb-4 sm:mb-0">
               Showing <span className="font-medium">{indexOfFirstStudent + 1}</span> to{' '}
               <span className="font-medium">
                 {Math.min(indexOfLastStudent, filteredStudents.length)}
               </span>{' '}
               of <span className="font-medium">{filteredStudents.length}</span> results
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-1">
               <button
                 onClick={() => paginate(1)}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
               >
                 <ChevronsLeft className="h-5 w-5" />
               </button>
               <button
                 onClick={() => paginate(currentPage - 1)}
                 disabled={currentPage === 1}
-                className={`p-2 rounded-md ${currentPage === 1 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
@@ -520,7 +653,7 @@ export default function StudentManagement() {
                   <button
                     key={pageNum}
                     onClick={() => paginate(pageNum)}
-                    className={`px-3 py-1 rounded-md ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                    className={`px-3 py-1 rounded-lg ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
                   >
                     {pageNum}
                   </button>
@@ -530,14 +663,14 @@ export default function StudentManagement() {
               <button
                 onClick={() => paginate(currentPage + 1)}
                 disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
-                className={`p-2 rounded-md ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
               >
                 <ChevronRight className="h-5 w-5" />
               </button>
               <button
                 onClick={() => paginate(totalFilteredPages)}
                 disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
-                className={`p-2 rounded-md ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-400 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100'}`}
+                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
               >
                 <ChevronsRight className="h-5 w-5" />
               </button>
@@ -547,11 +680,21 @@ export default function StudentManagement() {
 
         {/* Add/Edit Modal */}
         {showAddModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
+            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
               <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                  {editingStudent ? 'Edit Student' : 'Add New Student'}
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                  {editingStudent ? (
+                    <>
+                      <Edit className="h-6 w-6 text-blue-600" />
+                      Edit Student
+                    </>
+                  ) : (
+                    <>
+                      <UserPlus className="h-6 w-6 text-blue-600" />
+                      Add New Student
+                    </>
+                  )}
                 </h2>
                 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -566,7 +709,7 @@ export default function StudentManagement() {
                           <img
                             src={formData.photo}
                             alt="Student"
-                            className="h-20 w-20 rounded-full object-cover"
+                            className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm"
                           />
                         )}
                         <div>
@@ -579,7 +722,7 @@ export default function StudentManagement() {
                           />
                           <label
                             htmlFor="photo-upload"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors cursor-pointer flex items-center space-x-2"
+                            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2.5 rounded-lg hover:shadow-md transition-all cursor-pointer flex items-center space-x-2 shadow-sm"
                           >
                             <Upload className="h-4 w-4" />
                             <span>{uploading ? 'Uploading...' : 'Upload Photo'}</span>
@@ -599,7 +742,7 @@ export default function StudentManagement() {
                         value={formData.name}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -612,7 +755,7 @@ export default function StudentManagement() {
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -625,7 +768,7 @@ export default function StudentManagement() {
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -638,9 +781,74 @@ export default function StudentManagement() {
                         name="birthDate"
                         value={formData.birthDate}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
+
+                    {/* Password Fields - Only show for new students */}
+                    {!editingStudent && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPassword ? "text" : "password"}
+                              name="password"
+                              value={formData.password}
+                              onChange={handleInputChange}
+                              required
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                              onClick={() => setShowPassword(!showPassword)}
+                            >
+                              {showPassword ? (
+                                <EyeOff className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                          {formErrors.password && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
+                          )}
+                        </div>
+
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">
+                            Confirm Password *
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showConfirmPassword ? "text" : "password"}
+                              name="confirmPassword"
+                              value={formData.confirmPassword}
+                              onChange={handleInputChange}
+                              required
+                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-10"
+                            />
+                            <button
+                              type="button"
+                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
+                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                            >
+                              {showConfirmPassword ? (
+                                <EyeOff className="h-4 w-4 text-gray-400" />
+                              ) : (
+                                <Eye className="h-4 w-4 text-gray-400" />
+                              )}
+                            </button>
+                          </div>
+                          {formErrors.confirmPassword && (
+                            <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
+                          )}
+                        </div>
+                      </>
+                    )}
 
                     {/* Academic Information */}
                     <div>
@@ -652,7 +860,7 @@ export default function StudentManagement() {
                         value={formData.class}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
                         <option value="">Select Class</option>
                         {classes.map(cls => (
@@ -670,7 +878,7 @@ export default function StudentManagement() {
                         value={formData.section}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
                         <option value="">Select Section</option>
                         {sections.map(section => (
@@ -689,7 +897,7 @@ export default function StudentManagement() {
                         value={formData.rollNumber}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -702,7 +910,7 @@ export default function StudentManagement() {
                         value={formData.academicYear}
                         onChange={handleInputChange}
                         required
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
                         {academicYears.map(year => (
                           <option key={year} value={year}>{year}</option>
@@ -720,7 +928,7 @@ export default function StudentManagement() {
                         name="parentName"
                         value={formData.parentName}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -733,7 +941,7 @@ export default function StudentManagement() {
                         name="parentPhone"
                         value={formData.parentPhone}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -745,7 +953,7 @@ export default function StudentManagement() {
                         name="bloodGroup"
                         value={formData.bloodGroup}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       >
                         <option value="">Select Blood Group</option>
                         <option value="A+">A+</option>
@@ -768,7 +976,7 @@ export default function StudentManagement() {
                         name="emergencyContact"
                         value={formData.emergencyContact}
                         onChange={handleInputChange}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
 
@@ -781,22 +989,22 @@ export default function StudentManagement() {
                         value={formData.address}
                         onChange={handleInputChange}
                         rows={3}
-                        className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
                       />
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-4">
+                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+                      className="px-6 py-2.5 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
-                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                      className="px-6 py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 text-white rounded-xl hover:shadow-md transition-all shadow-sm"
                     >
                       {editingStudent ? 'Update Student' : 'Add Student'}
                     </button>
@@ -807,6 +1015,23 @@ export default function StudentManagement() {
           </div>
         )}
       </div>
+
+      <style jsx>{`
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes scaleIn {
+          from { transform: scale(0.95); opacity: 0; }
+          to { transform: scale(1); opacity: 1; }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.2s ease-out;
+        }
+        .animate-scaleIn {
+          animation: scaleIn 0.2s ease-out;
+        }
+      `}</style>
     </div>
   );
 }

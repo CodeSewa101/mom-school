@@ -81,28 +81,36 @@ export default function AdminDashboard() {
       title: 'Total Students',
       value: stats.totalStudents,
       icon: Users,
-      color: 'bg-blue-500',
+      bgColor: 'bg-blue-100',
+      iconColor: 'bg-blue-500',
+      textColor: 'text-blue-600',
       change: '+12%'
     },
     {
       title: 'Total Teachers',
       value: stats.totalTeachers,
       icon: GraduationCap,
-      color: 'bg-green-500',
+      bgColor: 'bg-green-100',
+      iconColor: 'bg-green-500',
+      textColor: 'text-green-600',
       change: '+3%'
     },
     {
       title: 'Total Fees Collected',
       value: `₹${stats.totalFees.toLocaleString('en-IN')}`,
       icon: DollarSign,
-      color: 'bg-yellow-500',
+      bgColor: 'bg-amber-100',
+      iconColor: 'bg-amber-500',
+      textColor: 'text-amber-600',
       change: '+18%'
     },
     {
       title: 'Birthdays Today',
       value: stats.birthdaysToday,
       icon: Calendar,
-      color: 'bg-purple-500',
+      bgColor: 'bg-purple-100',
+      iconColor: 'bg-purple-500',
+      textColor: 'text-purple-600',
       change: stats.birthdaysToday > 0 ? '🎉' : '—'
     }
   ];
@@ -141,10 +149,10 @@ export default function AdminDashboard() {
                 <div>
                   <p className="text-sm font-medium text-gray-600">{card.title}</p>
                   <p className="text-2xl font-bold text-gray-900 mt-2">{card.value}</p>
-                  <p className="text-sm text-green-600 mt-1">{card.change}</p>
+                  <p className={`text-sm ${card.textColor} mt-1`}>{card.change}</p>
                 </div>
-                <div className={`${card.color} p-3 rounded-lg`}>
-                  <card.icon className="h-6 w-6 text-white" />
+                <div className={`${card.bgColor} p-3 rounded-lg`}>
+                  <card.icon className={`h-6 w-6 ${card.textColor}`} />
                 </div>
               </div>
             </div>
@@ -165,9 +173,9 @@ export default function AdminDashboard() {
                 <GraduationCap className="h-6 w-6 text-green-600" />
                 <span className="font-medium text-green-600">Add Teacher</span>
               </button>
-              <button className="flex items-center space-x-3 p-4 bg-yellow-50 rounded-lg hover:bg-yellow-100 transition-colors">
-                <UserCheck className="h-6 w-6 text-yellow-600" />
-                <span className="font-medium text-yellow-600">Mark Attendance</span>
+              <button className="flex items-center space-x-3 p-4 bg-amber-50 rounded-lg hover:bg-amber-100 transition-colors">
+                <UserCheck className="h-6 w-6 text-amber-600" />
+                <span className="font-medium text-amber-600">Mark Attendance</span>
               </button>
               <button className="flex items-center space-x-3 p-4 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors">
                 <Bell className="h-6 w-6 text-purple-600" />
@@ -185,7 +193,7 @@ export default function AdminDashboard() {
                   <div className="flex-shrink-0">
                     {activity.type === 'student' && <Users className="h-5 w-5 text-blue-500" />}
                     {activity.type === 'fee' && <DollarSign className="h-5 w-5 text-green-500" />}
-                    {activity.type === 'attendance' && <UserCheck className="h-5 w-5 text-yellow-500" />}
+                    {activity.type === 'attendance' && <UserCheck className="h-5 w-5 text-amber-500" />}
                     {activity.type === 'announcement' && <Bell className="h-5 w-5 text-purple-500" />}
                   </div>
                   <div className="flex-1">
