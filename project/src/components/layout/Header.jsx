@@ -4,9 +4,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../../contexts/AuthContext";
 import logo from "../../image/mom-School.png";
 
+// ChevronDown component for the dropdown arrow
+const ChevronDown = ({ className }) => (
+  <svg
+    className={className}
+    width="16"
+    height="16"
+    viewBox="0 0 24 24"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path d="M7 10l5 5 5-5H7z" fill="currentColor" />
+  </svg>
+);
+
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isAdminDropdownOpen, setIsAdminDropdownOpen] = useState(false);
+  const [isAcademicDropdownOpen, setIsAcademicDropdownOpen] = useState(false);
+  const [isMobileAcademicOpen, setIsMobileAcademicOpen] = useState(false);
   const { currentUser, logout } = useAuth();
   const location = useLocation();
 
@@ -20,10 +36,30 @@ export default function Header() {
 
   const navItems = [
     { name: "Home", path: "/" },
-    { name: "About", path: "/about" },
+    { name: "About Us", path: "/about" },
+    { name: "Academic", path: null },
     { name: "Gallery", path: "/gallery" },
-    { name: "Contact", path: "/contact" },
+    { name: "Staff", path: "/staff" },
+    { name: "HelpDesk", path: "/contact" },
   ];
+
+  const dropdownItems = [
+    { name: "Result", path: "/result" },
+    { name: "Syllabus", path: "/syllabus" },
+    { name: "School Timing", path: "/schooltiming" },
+    { name: "Book List", path: "/booklist" },
+    { name: "Uniform", path: "/uniform" },
+  ];
+
+  const isActivePath = (path) => {
+    if (!path) return false;
+    if (path === "/") return location.pathname === "/";
+    return location.pathname.startsWith(path);
+  };
+
+  const isAcademicActive = () => {
+    return dropdownItems.some((item) => location.pathname === item.path);
+  };
 
   const menuVariants = {
     hidden: { opacity: 0, y: -10, scale: 0.95 },
@@ -38,6 +74,26 @@ export default function Header() {
       },
     },
     exit: { opacity: 0, y: -10, scale: 0.95 },
+  };
+
+  const mobileDropdownVariants = {
+    hidden: { height: 0, opacity: 0 },
+    visible: {
+      height: "auto",
+      opacity: 1,
+      transition: {
+        height: { duration: 0.3 },
+        opacity: { duration: 0.2, delay: 0.1 },
+      },
+    },
+    exit: {
+      height: 0,
+      opacity: 0,
+      transition: {
+        opacity: { duration: 0.2 },
+        height: { duration: 0.3, delay: 0.1 },
+      },
+    },
   };
 
   const AdminIcon = ({ isOpen = false }) => (
@@ -69,7 +125,7 @@ export default function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center">
+          <Link to="/" className="flex items-center flex-shrink-0">
             <motion.div
               className="flex items-center"
               whileHover={{ scale: 1.02 }}
@@ -79,17 +135,14 @@ export default function Header() {
                 <img
                   src={logo}
                   alt="MOM School of Excellency"
-                  className="h-12 object-contain"
+                  className="h-10 sm:h-12 object-contain"
                 />
               </div>
 
-              <div className="block relative ml-3 text-center sm:text-left">
-                <motion.h1 className="font-bold text-xl tracking-tight">
+              <div className="hidden sm:block relative ml-3 text-center sm:text-left">
+                <motion.h1 className="font-bold text-lg xl:text-xl tracking-tight">
                   <span className="block bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                     MOM SCHOOL OF EXCELLENCY
-                  </span>
-                  <span className="text-xs tracking-wider font-medium text-gray-500 uppercase">
-                    
                   </span>
                 </motion.h1>
               </div>
@@ -97,39 +150,86 @@ export default function Header() {
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center space-x-1">
+          <nav className="hidden md:flex items-center space-x-2">
             {navItems.map((item) => (
-              <Link
-                key={item.name}
-                to={item.path}
-                className={`relative px-4 py-2 font-medium text-sm transition-colors ${
-                  location.pathname === item.path
-                    ? "text-blue-600"
-                    : "text-gray-600 hover:text-blue-500"
-                }`}
-              >
-                <span className="relative z-10 flex items-center">
-                  {item.name}
-                  {location.pathname === item.path && (
-                    <motion.span
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-blue-500 rounded-full"
-                      layoutId="underline"
-                      transition={{
-                        type: "spring",
-                        bounce: 0.2,
-                        duration: 0.6,
-                      }}
-                    />
-                  )}
-                </span>
-              </Link>
+              <div key={item.name} className="relative">
+                {item.name === "Academic" ? (
+                  <div
+                    className="relative"
+                    onMouseEnter={() => setIsAcademicDropdownOpen(true)}
+                    onMouseLeave={() => setIsAcademicDropdownOpen(false)}
+                  >
+                    <div
+                      className={`flex items-center px-3 py-2 text-sm font-medium transition-colors duration-200 cursor-pointer relative ${
+                        isAcademicActive()
+                          ? "text-blue-600"
+                          : "text-gray-700 hover:text-blue-600"
+                      }`}
+                    >
+                      <span>{item.name}</span>
+                      <ChevronDown
+                        className={`ml-1 h-4 w-4 transition-transform duration-200 ${
+                          isAcademicDropdownOpen ? "rotate-180" : ""
+                        }`}
+                      />
+                      {isAcademicActive() && (
+                        <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600"></span>
+                      )}
+                    </div>
+
+                    {/* Academic Dropdown Menu */}
+                    <AnimatePresence>
+                      {isAcademicDropdownOpen && (
+                        <motion.div
+                          initial="hidden"
+                          animate="visible"
+                          exit="exit"
+                          variants={menuVariants}
+                          className="absolute top-full left-0 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-50 overflow-hidden"
+                        >
+                          <div className="py-1">
+                            {dropdownItems.map((dropdownItem) => (
+                              <Link
+                                key={dropdownItem.name}
+                                to={dropdownItem.path}
+                                className={`block px-4 py-2 text-sm transition-colors duration-200 ${
+                                  isActivePath(dropdownItem.path)
+                                    ? "bg-blue-50 text-blue-600 border-r-2 border-blue-600"
+                                    : "text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+                                }`}
+                                onClick={() => setIsAcademicDropdownOpen(false)}
+                              >
+                                {dropdownItem.name}
+                              </Link>
+                            ))}
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <Link
+                    to={item.path}
+                    className={`block px-3 py-2 text-sm font-medium transition-colors duration-200 relative ${
+                      isActivePath(item.path)
+                        ? "text-blue-600"
+                        : "text-gray-700 hover:text-blue-600"
+                    }`}
+                  >
+                    {item.name}
+                    {isActivePath(item.path) && (
+                      <span className="absolute bottom-0 left-3 right-3 h-0.5 bg-blue-600"></span>
+                    )}
+                  </Link>
+                )}
+              </div>
             ))}
 
-            {/* Admin Dropdown */}
+            {/* Admin Section */}
             {currentUser ? (
               <div className="relative ml-4">
                 <motion.button
-                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center border border-gray-200 bg-white hover:bg-gray-50 shadow-xs transition-all"
+                  className="px-4 py-2 rounded-lg text-sm font-medium flex items-center border border-gray-200 bg-white hover:bg-gray-50 shadow-sm transition-all"
                   whileHover={{ y: -1 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setIsAdminDropdownOpen(!isAdminDropdownOpen)}
@@ -200,7 +300,9 @@ export default function Header() {
                   to="/login"
                   className="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-blue-500 shadow-sm hover:shadow-md transition-all"
                 >
-                  <span className="mr-2">🔑</span> Admin Login
+                  <span className="mr-2">🔑</span>
+                  <span className="hidden lg:inline">Admin Login</span>
+                  <span className="lg:hidden">Login</span>
                 </Link>
               </motion.div>
             )}
@@ -266,51 +368,107 @@ export default function Header() {
                       duration: 0.2,
                     }}
                   >
-                    <Link
-                      to={item.path}
-                      className={`block px-4 py-2.5 rounded-md transition-all text-sm ${
-                        location.pathname === item.path
-                          ? "bg-blue-50 text-blue-600 font-medium"
-                          : "text-gray-700 hover:bg-gray-50"
-                      }`}
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
+                    {item.name === "Academic" ? (
+                      <div>
+                        <button
+                          onClick={() =>
+                            setIsMobileAcademicOpen(!isMobileAcademicOpen)
+                          }
+                          className={`w-full flex items-center justify-between px-4 py-2.5 rounded-md transition-all text-sm font-medium ${
+                            isAcademicActive()
+                              ? "bg-blue-50 text-blue-600"
+                              : "text-gray-700 hover:bg-gray-50"
+                          }`}
+                        >
+                          <span>{item.name}</span>
+                          <ChevronDown
+                            className={`h-4 w-4 transition-transform duration-200 ${
+                              isMobileAcademicOpen ? "rotate-180" : ""
+                            }`}
+                          />
+                        </button>
+
+                        <AnimatePresence>
+                          {isMobileAcademicOpen && (
+                            <motion.div
+                              initial="hidden"
+                              animate="visible"
+                              exit="exit"
+                              variants={mobileDropdownVariants}
+                              className="overflow-hidden"
+                            >
+                              <div className="pl-4 mt-2 space-y-1 border-l-2 border-blue-100 ml-4">
+                                {dropdownItems.map((dropdownItem) => (
+                                  <Link
+                                    key={dropdownItem.name}
+                                    to={dropdownItem.path}
+                                    className={`block px-4 py-2 rounded-md transition-all text-sm ${
+                                      location.pathname === dropdownItem.path
+                                        ? "bg-blue-50 text-blue-600 font-medium"
+                                        : "text-gray-600 hover:bg-gray-50 hover:text-blue-600"
+                                    }`}
+                                    onClick={() => {
+                                      setIsMenuOpen(false);
+                                      setIsMobileAcademicOpen(false);
+                                    }}
+                                  >
+                                    {dropdownItem.name}
+                                  </Link>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    ) : (
+                      <Link
+                        to={item.path}
+                        className={`block px-4 py-2.5 rounded-md transition-all text-sm font-medium ${
+                          location.pathname === item.path
+                            ? "bg-blue-50 text-blue-600"
+                            : "text-gray-700 hover:bg-gray-50"
+                        }`}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    )}
                   </motion.div>
                 ))}
 
+                {/* Mobile Admin Section */}
                 {currentUser ? (
-                  <>
-                    <div className="pt-2 mt-2 border-t border-gray-200/30">
-                      <div className="px-4 py-2.5 text-xs text-gray-500">
-                        Admin Panel
-                      </div>
-                      <Link
-                        to="/admin"
-                        className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 transition-all text-sm"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/admin/settings"
-                        className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 transition-all text-sm"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Settings
-                      </Link>
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsMenuOpen(false);
-                        }}
-                        className="block w-full text-left px-4 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-all text-sm"
-                      >
-                        Logout
-                      </button>
+                  <div className="pt-2 mt-2 border-t border-gray-200/30">
+                    <div className="px-4 py-2.5 text-xs text-gray-500 font-medium">
+                      Admin Panel
                     </div>
-                  </>
+                    <Link
+                      to="/admin"
+                      className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span className="w-5 mr-3 text-blue-500">📊</span>
+                      Dashboard
+                    </Link>
+                    <Link
+                      to="/admin/settings"
+                      className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm flex items-center"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <span className="w-5 mr-3 text-blue-500">⚙️</span>
+                      Settings
+                    </Link>
+                    <button
+                      onClick={() => {
+                        handleLogout();
+                        setIsMenuOpen(false);
+                      }}
+                      className="block w-full text-left px-4 py-2.5 rounded-md text-red-600 hover:bg-red-50 transition-all text-sm flex items-center"
+                    >
+                      <span className="w-5 mr-3">🔓</span>
+                      Logout
+                    </button>
+                  </div>
                 ) : (
                   <div className="pt-2 mt-2 border-t border-gray-200/30">
                     <Link
