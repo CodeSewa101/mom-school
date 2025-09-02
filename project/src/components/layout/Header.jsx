@@ -44,6 +44,7 @@ export default function Header() {
   ];
 
   const dropdownItems = [
+    { name: "Admission", path: "/admission" },
     { name: "Result", path: "/result" },
     { name: "Syllabus", path: "/syllabus" },
     { name: "School Timing", path: "/schooltiming" },
