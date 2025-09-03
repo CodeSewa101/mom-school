@@ -53,11 +53,8 @@ export default function StudentManagement() {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const [studentsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalStudents, setTotalStudents] = useState(0);
-  const [lastVisible, setLastVisible] = useState(null);
-  const [firstVisible, setFirstVisible] = useState(null);
-  const [snapshotDocs, setSnapshotDocs] = useState([]);
 
   // Academic years from 2024-25 to 2030-31
   const academicYears = [
@@ -109,7 +106,46 @@ export default function StudentManagement() {
 
   useEffect(() => {
     filterStudents();
+    setCurrentPage(1); // Reset to first page when filters change
   }, [students, searchTerm, filterClass]);
+
+  // Calculate pagination values
+  const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentStudents = filteredStudents.slice(startIndex, endIndex);
+  const pageNumbers = [];
+  
+  for (let i = 1; i <= totalPages; i++) {
+    pageNumbers.push(i);
+  }
+
+  // Only show a subset of page numbers if there are too many
+  const getDisplayedPageNumbers = () => {
+    const maxVisiblePages = 5;
+    if (totalPages <= maxVisiblePages) return pageNumbers;
+    
+    const half = Math.floor(maxVisiblePages / 2);
+    let start = currentPage - half;
+    let end = currentPage + half;
+    
+    if (start < 1) {
+      start = 1;
+      end = maxVisiblePages;
+    }
+    
+    if (end > totalPages) {
+      end = totalPages;
+      start = Math.max(1, end - maxVisiblePages + 1);
+    }
+    
+    const pages = [];
+    for (let i = start; i <= end; i++) {
+      pages.push(i);
+    }
+    
+    return pages;
+  };
 
   const fetchTotalStudents = async () => {
     try {
@@ -121,46 +157,21 @@ export default function StudentManagement() {
     }
   };
 
-  const fetchStudents = async (pageDirection = 'first', lastDoc = null) => {
+  const fetchStudents = async () => {
     try {
       setLoading(true);
-      let q;
       const studentsRef = collection(db, 'students');
-      
-      if (pageDirection === 'first') {
-        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
-        setCurrentPage(1);
-      } else if (pageDirection === 'next' && lastVisible) {
-        q = query(studentsRef, orderBy('name'), startAfter(lastVisible), limit(studentsPerPage));
-        setCurrentPage(prev => prev + 1);
-      } else if (pageDirection === 'prev' && firstVisible) {
-        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
-        setCurrentPage(prev => prev - 1);
-      } else if (pageDirection === 'last') {
-        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
-        setCurrentPage(Math.ceil(totalStudents / studentsPerPage));
-      } else {
-        q = query(studentsRef, orderBy('name'), limit(studentsPerPage));
-      }
+      const q = query(studentsRef, orderBy('name'));
       
       const snapshot = await getDocs(q);
       const studentData = [];
-      const docs = [];
       
       snapshot.forEach((doc) => {
         studentData.push({ id: doc.id, ...doc.data() });
-        docs.push(doc);
       });
       
       setStudents(studentData);
       setFilteredStudents(studentData);
-      setSnapshotDocs(docs);
-      
-      if (docs.length > 0) {
-        setFirstVisible(docs[0]);
-        setLastVisible(docs[docs.length - 1]);
-      }
-      
       setLoading(false);
     } catch (error) {
       console.error('Error fetching students:', error);
@@ -185,10 +196,7 @@ export default function StudentManagement() {
     }
 
     setFilteredStudents(filtered);
-    setCurrentPage(1);
   };
-
-  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -402,6 +410,18 @@ export default function StudentManagement() {
     }
   };
 
+  // Pagination handlers
+  const goToPage = (page) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
+
+  const goToFirstPage = () => goToPage(1);
+  const goToLastPage = () => goToPage(totalPages);
+  const goToNextPage = () => goToPage(currentPage + 1);
+  const goToPrevPage = () => goToPage(currentPage - 1);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
@@ -414,12 +434,6 @@ export default function StudentManagement() {
       </div>
     );
   }
-
-  // Pagination calculations
-  const indexOfLastStudent = currentPage * studentsPerPage;
-  const indexOfFirstStudent = indexOfLastStudent - studentsPerPage;
-  const currentStudents = filteredStudents.slice(indexOfFirstStudent, indexOfLastStudent);
-  const totalFilteredPages = Math.ceil(filteredStudents.length / studentsPerPage);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 p-6">
@@ -515,16 +529,21 @@ export default function StudentManagement() {
                 <option key={cls} value={cls}>Class {cls}</option>
               ))}
             </select>
-            <div className="text-sm text-gray-600 flex items-center justify-center md:justify-end">
-              <span className="bg-gray-100 px-3 py-1.5 rounded-lg">
-                Showing {filteredStudents.length > 0 ? indexOfFirstStudent + 1 : 0}-{Math.min(indexOfLastStudent, filteredStudents.length)} of {filteredStudents.length} students
-              </span>
-            </div>
+            <select
+              value={itemsPerPage}
+              onChange={(e) => setItemsPerPage(Number(e.target.value))}
+              className="px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            >
+              <option value="5">5 per page</option>
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="50">50 per page</option>
+            </select>
           </div>
         </div>
 
         {/* Students Table */}
-        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+        <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 mb-6">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -637,69 +656,70 @@ export default function StudentManagement() {
           </div>
         </div>
 
-        {/* Pagination */}
-        {filteredStudents.length > studentsPerPage && (
-          <div className="flex flex-col sm:flex-row items-center justify-between mt-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100">
-            <div className="text-sm text-gray-700 mb-4 sm:mb-0">
-              Showing <span className="font-medium">{indexOfFirstStudent + 1}</span> to{' '}
-              <span className="font-medium">
-                {Math.min(indexOfLastStudent, filteredStudents.length)}
-              </span>{' '}
-              of <span className="font-medium">{filteredStudents.length}</span> results
-            </div>
-            <div className="flex space-x-1">
-              <button
-                onClick={() => paginate(1)}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
-              >
-                <ChevronsLeft className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                disabled={currentPage === 1}
-                className={`p-2 rounded-lg ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
+        {/* Pagination Controls */}
+        {filteredStudents.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-100">
+            <div className="flex flex-col sm:flex-row items-center justify-between">
+              <div className="text-sm text-gray-600 mb-4 sm:mb-0">
+                Showing {startIndex + 1} to {Math.min(endIndex, filteredStudents.length)} of {filteredStudents.length} students
+              </div>
               
-              {Array.from({ length: Math.min(5, totalFilteredPages) }, (_, i) => {
-                let pageNum;
-                if (totalFilteredPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalFilteredPages - 2) {
-                  pageNum = totalFilteredPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
+              <div className="flex items-center space-x-1">
+                {/* First Page Button */}
+                <button
+                  onClick={goToFirstPage}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="First page"
+                >
+                  <ChevronsLeft className="h-4 w-4" />
+                </button>
                 
-                return (
+                {/* Previous Page Button */}
+                <button
+                  onClick={goToPrevPage}
+                  disabled={currentPage === 1}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                
+                {/* Page Number Buttons */}
+                {getDisplayedPageNumbers().map((pageNum) => (
                   <button
                     key={pageNum}
-                    onClick={() => paginate(pageNum)}
-                    className={`px-3 py-1 rounded-lg ${currentPage === pageNum ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
+                    onClick={() => goToPage(pageNum)}
+                    className={`w-10 h-10 rounded-lg border transition-colors ${
+                      currentPage === pageNum
+                        ? 'bg-blue-500 text-white border-blue-500'
+                        : 'border-gray-200 hover:bg-gray-50'
+                    }`}
                   >
                     {pageNum}
                   </button>
-                );
-              })}
-              
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
-                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text極端な例ではありますが、このような状況では、適切な対応が求められます。' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-              <button
-                onClick={() => paginate(totalFilteredPages)}
-                disabled={currentPage === totalFilteredPages || filteredStudents.length === 0}
-                className={`p-2 rounded-lg ${currentPage === totalFilteredPages || filteredStudents.length === 0 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-700 hover:bg-gray-100 transition-colors'}`}
-              >
-                <ChevronsRight className="h-5 w-5" />
-              </button>
+                ))}
+                
+                {/* Next Page Button */}
+                <button
+                  onClick={goToNextPage}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+                
+                {/* Last Page Button */}
+                <button
+                  onClick={goToLastPage}
+                  disabled={currentPage === totalPages}
+                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Last page"
+                >
+                  <ChevronsRight className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         )}
