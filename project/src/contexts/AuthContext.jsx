@@ -1,19 +1,26 @@
-// AuthContext.js
-import {
+import React, {
   createContext,
   useContext,
-  useEffect,
   useState,
+  useEffect,
   useCallback,
 } from "react";
-import { auth, db } from "../config/firebase";
 import {
-  onAuthStateChanged,
   signInWithEmailAndPassword,
   signOut,
+  onAuthStateChanged,
   createUserWithEmailAndPassword,
 } from "firebase/auth";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import {
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from "firebase/firestore";
+import { auth, db } from "../config/firebase";
 
 const AuthContext = createContext();
 
@@ -25,8 +32,6 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-
-  // Add a public mode state
   const [isPublicMode, setIsPublicMode] = useState(false);
 
   const register = useCallback(async (email, password, name) => {
@@ -77,11 +82,55 @@ export function AuthProvider({ children }) {
 
       setCurrentUser(userCredential.user);
       setUserData(userDoc.data());
-      setIsPublicMode(false); // Exit public mode when logging in
+      setIsPublicMode(false);
 
       return userCredential;
     } catch (error) {
       console.error("Login error:", error);
+      throw error;
+    }
+  }, []);
+
+  const studentLogin = useCallback(async (dob, password) => {
+    try {
+      // Query students collection for matching date of birth
+      const studentsRef = collection(db, "students");
+      const q = query(studentsRef, where("birthDate", "==", dob));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        throw new Error("Student not found");
+      }
+
+      // Get the first matching student
+      const studentDoc = querySnapshot.docs[0];
+      const studentData = studentDoc.data();
+
+      // Verify password (in a real app, you should hash passwords)
+      if (studentData.password !== password) {
+        throw new Error("Invalid credentials");
+      }
+
+      // Create a minimal user object for student
+      const studentUser = {
+        uid: studentDoc.id,
+        email: studentData.email || "",
+        displayName: studentData.name,
+        role: "student",
+      };
+
+      // Set user data with student information
+      setCurrentUser(studentUser);
+      setUserData({
+        ...studentData,
+        role: "student",
+        uid: studentDoc.id,
+      });
+      setIsPublicMode(false);
+
+      return studentUser;
+    } catch (error) {
+      console.error("Student login error:", error);
       throw error;
     }
   }, []);
@@ -91,7 +140,7 @@ export function AuthProvider({ children }) {
       await signOut(auth);
       setCurrentUser(null);
       setUserData(null);
-      setIsPublicMode(true); // Enter public mode when logging out
+      setIsPublicMode(true);
     } catch (error) {
       console.error("Logout error:", error);
       throw error;
@@ -125,7 +174,7 @@ export function AuthProvider({ children }) {
       } else {
         setCurrentUser(null);
         setUserData(null);
-        setIsPublicMode(true); // No user = public mode
+        setIsPublicMode(true);
       }
       setLoading(false);
     });
@@ -142,6 +191,7 @@ export function AuthProvider({ children }) {
     exitPublicMode,
     register,
     login,
+    studentLogin,
     logout,
   };
 

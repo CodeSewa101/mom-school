@@ -1,4 +1,9 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Routes,
+  Route,
+  Navigate,
+} from "react-router-dom";
 import { Toaster } from "react-hot-toast";
 import { AuthProvider } from "./contexts/AuthContext";
 import Header from "./components/layout/Header";
@@ -21,6 +26,16 @@ import Timetable from "./pages/Timetable"; // Admin version
 import TimetableView from "./pages/TimetableView"; // Public version
 import HomeworkPage from "./pages/HomeworkPage";
 import AttendancePage from "./pages/AttendancePage";
+import FeeManagement from "./pages/FeeManagement";
+import ResultsPage from "./pages/ResultsPage";
+
+// Import Student Components
+import StudentLayout from "./components/student/StudentLayout";
+import StudentDashboard from "./components/student/StudentDashboard";
+// import StudentTimetable from "./components/student/StudentTimetable";
+// import StudentHomework from "./components/student/StudentHomework";
+// import StudentAttendance from "./components/student/StudentAttendance";
+// import StudentResults from "./components/student/StudentResults";
 
 function App() {
   return (
@@ -104,7 +119,7 @@ function App() {
           <Route path="/register" element={<Register />} />
 
           {/* Admin Routes */}
-          <Route element={<ProtectedRoute />}>
+          <Route element={<ProtectedRoute requiredRole="admin" />}>
             <Route path="/admin" element={<AdminLayout />}>
               <Route index element={<AdminDashboard />} />
               <Route path="students" element={<StudentManagement />} />
@@ -117,8 +132,24 @@ function App() {
               <Route path="timetable" element={<Timetable />} />
               <Route path="homework" element={<HomeworkPage />} />
               <Route path="attendance" element={<AttendancePage />} />
+              <Route path="fees" element={<FeeManagement />} />
+              <Route path="results" element={<ResultsPage />} />
             </Route>
           </Route>
+
+          {/* Student Routes */}
+          <Route element={<ProtectedRoute requiredRole="student" />}>
+            <Route path="/student" element={<StudentLayout />}>
+              <Route index element={<StudentDashboard />} />
+              {/* <Route path="timetable" element={<StudentTimetable />} />
+              <Route path="homework" element={<StudentHomework />} />
+              <Route path="attendance" element={<StudentAttendance />} />
+              <Route path="results" element={<StudentResults />} /> */}
+            </Route>
+          </Route>
+
+          {/* Catch all route - redirect to home */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>
