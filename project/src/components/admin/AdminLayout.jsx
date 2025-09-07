@@ -381,16 +381,7 @@ const getAdminMenuItems = () => [
     bgColor: "bg-purple-50",
     textColor: "text-purple-700",
   },
-  { 
-    name: "Classes & Subjects", 
-    path: "/admin/classes", 
-    icon: BookOpen, 
-    color: "from-amber-500 to-amber-600",
-    hoverColor: "hover:from-amber-600 hover:to-amber-700",
-    iconColor: "text-amber-100",
-    bgColor: "bg-amber-50",
-    textColor: "text-amber-700"
-  },
+
   { 
     name: "Attendance", 
     path: "/admin/attendance", 
