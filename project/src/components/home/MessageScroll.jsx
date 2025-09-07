@@ -1,105 +1,16 @@
-// // src/components/home/MessageScroll.jsx
-// import { useEffect, useState } from "react";
-// import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-// import { db } from "../../config/firebase";
-
-// export default function MessageScroll() {
-//   const [notifications, setNotifications] = useState([]);
-//   const [loading, setLoading] = useState(true);
-
-//   useEffect(() => {
-//     const fetchActiveNotifications = async () => {
-//       try {
-//         const notificationsRef = collection(db, "notifications");
-//         const q = query(
-//           notificationsRef,
-//           where("isActive", "==", true),
-//           orderBy("priority", "desc"),
-//           orderBy("createdAt", "desc")
-//         );
-
-//         const snapshot = await getDocs(q);
-//         const notificationData = snapshot.docs.map((doc) => ({
-//           id: doc.id,
-//           ...doc.data(),
-//         }));
-
-//         setNotifications(notificationData);
-//         setLoading(false);
-//       } catch (error) {
-//         console.error("Error fetching notifications:", error);
-//         setLoading(false);
-//       }
-//     };
-
-//     fetchActiveNotifications();
-//   }, []);
-
-//   if (loading) {
-//     return (
-//       <div className="bg-blue-600 text-white py-3 px-4 overflow-hidden">
-//         <div className="max-w-6xl mx-auto">Loading announcements...</div>
-//       </div>
-//     );
-//   }
-
-//   if (notifications.length === 0) {
-//     return null; // Don't show anything if no active notifications
-//   }
-
-//   // Extract only messages from notifications
-//   const allMessages = notifications.map((n) => n.message);
-//   const scrollingContent = [...allMessages, ...allMessages].join(" ••• ");
-
-//   return (
-//     <div className="bg-blue-600 text-white py-3 px-4 overflow-hidden">
-//       <div className="max-w-6xl mx-auto flex items-center">
-//         <span className="font-semibold mr-3 whitespace-nowrap shrink-0">
-//           {/* Announcements: */}
-//         </span>
-
-//         <div className="relative overflow-hidden flex-1">
-//           <div
-//             className="whitespace-nowrap inline-block animate-marquee"
-//             style={{
-//               animationDuration: `${allMessages.length * 5}s`,
-//               paddingLeft: "100%",
-//             }}
-//           >
-//             {scrollingContent}
-//           </div>
-//         </div>
-//       </div>
-
-//       <style jsx>{`
-//         @keyframes marquee {
-//           0% {
-//             transform: translateX(0);
-//           }
-//           100% {
-//             transform: translateX(-50%);
-//           }
-//         }
-//         .animate-marquee {
-//           display: inline-block;
-//           animation: marquee linear infinite;
-//           will-change: transform;
-//         }
-//       `}</style>
-//     </div>
-//   );
-// }
-// src/components/home/MessageScroll.jsx
-import { useEffect, useState } from "react";
-
+import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { db } from "../../config/firebase";
+import { db } from "../../config/firebase"; // Adjust path as needed
+import { Bell, X, Eye, Calendar, Download, Sparkles } from "lucide-react";
 
-export default function MessageScroll() {
+const MessageScroll = () => {
+  const [isVisible, setIsVisible] = useState(false);
+  const [showAll, setShowAll] = useState(false);
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showAllNotifications, setShowAllNotifications] = useState(false);
 
+  // Fetch notifications from Firebase
   useEffect(() => {
     const fetchActiveNotifications = async () => {
       try {
@@ -107,16 +18,14 @@ export default function MessageScroll() {
         const q = query(
           notificationsRef,
           where("isActive", "==", true),
-          orderBy("createdAt", "desc"),
-          limit(5) // Show only 5 recent notifications in floating view
+          orderBy("priority", "desc"),
+          orderBy("createdAt", "desc")
         );
-
         const snapshot = await getDocs(q);
         const notificationData = snapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-
         setNotifications(notificationData);
         setLoading(false);
       } catch (error) {
@@ -128,218 +37,298 @@ export default function MessageScroll() {
     fetchActiveNotifications();
   }, []);
 
-  const fetchAllNotifications = async () => {
-    try {
-      const notificationsRef = collection(db, "notifications");
-      const q = query(
-        notificationsRef,
-        where("isActive", "==", true),
-        orderBy("createdAt", "desc")
-      );
-
-      const snapshot = await getDocs(q);
-      const notificationData = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-
-      setNotifications(notificationData);
-    } catch (error) {
-      console.error("Error fetching all notifications:", error);
+  // Auto-show notification after data loads
+  useEffect(() => {
+    if (!loading && notifications.length > 0) {
+      const timer = setTimeout(() => {
+        setIsVisible(true);
+      }, 1000);
+      return () => clearTimeout(timer);
     }
+  }, [loading, notifications.length]);
+
+  // Auto-cycle through notifications
+  useEffect(() => {
+    if (isVisible && !showAll && notifications.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentIndex((prev) => (prev + 1) % notifications.length);
+      }, 4000);
+      return () => clearInterval(interval);
+    }
+  }, [isVisible, showAll, notifications.length]);
+
+  const handleClose = () => {
+    setIsVisible(false);
   };
 
   const handleViewAll = () => {
-    if (!showAllNotifications) {
-      fetchAllNotifications();
-    }
-    setShowAllNotifications(!showAllNotifications);
+    setShowAll(true);
   };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-    });
+  const handleBackToRotation = () => {
+    setShowAll(false);
+    setCurrentIndex(0);
   };
 
-  if (loading) {
-    return (
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <div className="animate-pulse">Loading notice board...</div>
-        </div>
-      </div>
-    );
-  }
-
-  if (notifications.length === 0) {
-    return (
-      <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white py-6 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h2 className="text-2xl font-bold mb-2">NOTICE BOARD</h2>
-          <p>No active notifications at this time.</p>
-        </div>
-      </div>
-    );
+  // Don't render if loading or no notifications
+  if (loading || notifications.length === 0 || !isVisible) {
+    return null;
   }
 
   return (
-    <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white">
-      {/* Header */}
-      <div className="text-center py-4 px-4 border-b border-blue-500">
-        <h2 className="text-3xl font-bold tracking-wide">NOTICE BOARD</h2>
-      </div>
+    <div className="fixed bottom-3 right-3 sm:bottom-4 sm:right-4 lg:bottom-6 lg:right-6 z-50 w-[calc(100vw-24px)] max-w-xs sm:max-w-sm lg:max-w-md">
+      <div
+        className={`transform transition-all duration-700 ease-out ${
+          isVisible
+            ? "translate-y-0 opacity-100 scale-100"
+            : "translate-y-full opacity-0 scale-95"
+        }`}
+      >
+        <div className="bg-gradient-to-br from-white via-violet-50/50 to-rose-50/30 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-violet-200/50 overflow-hidden relative">
+          {/* Decorative Elements */}
+          <div className="absolute -top-2 -right-2 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-violet-200/20 to-rose-200/20"></div>
+          <div className="absolute -bottom-3 -left-3 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-200/20 to-cyan-200/20"></div>
 
-      {/* Notifications Container */}
-      <div className="max-w-6xl mx-auto px-4">
-        {showAllNotifications ? (
-          /* All Notifications View */
-          <div className="py-6">
-            <div className="space-y-4 max-h-96 overflow-y-auto">
-              {notifications.map((notification, index) => (
-                <div
-                  key={notification.id}
-                  className="bg-white/10 backdrop-blur-sm rounded-lg p-4 border border-white/20 hover:bg-white/15 transition-colors duration-200"
-                >
-                  <div className="flex justify-between items-start mb-2">
-                    <span className="text-sm text-blue-200">
-                      {formatDate(notification.createdAt)}
-                    </span>
-                    {notification.priority === "high" && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                        HIGH PRIORITY
-                      </span>
-                    )}
-                    {index < 3 && (
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium">
-                        NEW
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-white font-medium leading-relaxed">
-                    • {notification.message}
-                  </p>
-                  {notification.downloadLink && (
-                    <div className="mt-3">
-                      <a
-                        href={notification.downloadLink}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center text-blue-200 hover:text-white text-sm underline"
-                      >
-                        Download
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))}
+          {/* Header */}
+          <div className="bg-gradient-to-r from-violet-600 via-rose-500 to-emerald-500 text-white px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 flex items-center justify-between relative overflow-hidden">
+            <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxyZWN0IHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3BhdHRlcm4pIi8+PC9zdmc+')] opacity-20"></div>
+            <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
+              <div className="bg-white/20 p-1 sm:p-1.5 rounded-lg backdrop-blur-sm">
+                <Bell className="w-3.5 h-3.5 sm:w-4 sm:h-4 lg:w-5 lg:h-5" />
+              </div>
+              <h3 className="font-bold text-xs sm:text-sm lg:text-base tracking-wide">
+                NOTICE BOARD
+              </h3>
+              <Sparkles className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse" />
             </div>
+            <button
+              onClick={handleClose}
+              className="text-white/80 hover:text-white hover:bg-white/20 transition-all duration-300 p-1 sm:p-1.5 rounded-lg relative z-10"
+            >
+              <X className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            </button>
           </div>
-        ) : (
-          /* Floating Notifications View */
-          <div
-            className="py-6 relative overflow-hidden"
-            style={{ height: "200px" }}
-          >
-            <div className="absolute inset-0">
-              {notifications.slice(0, 3).map((notification, index) => (
+
+          {/* Content */}
+          <div className="p-3 sm:p-4 lg:p-5 relative z-10">
+            {!showAll ? (
+              // Single notification rotation view
+              <div className="space-y-2 sm:space-y-3">
                 <div
-                  key={notification.id}
-                  className="absolute w-full animate-float-up opacity-90 hover:opacity-100"
-                  style={{
-                    animationDelay: `${index * 2}s`,
-                    animationDuration: "8s",
-                  }}
+                  key={notifications[currentIndex].id}
+                  className="animate-fade-in"
                 >
-                  <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4 mx-4 border border-white/20 shadow-lg">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-sm text-blue-200">
-                        {formatDate(notification.createdAt)}
-                      </span>
-                      <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-medium animate-pulse">
-                        NEW
-                      </span>
-                    </div>
-                    <p className="text-white font-medium leading-relaxed">
-                      • {notification.message}
-                    </p>
-                    {notification.downloadLink && (
-                      <div className="mt-3">
-                        <a
-                          href={notification.downloadLink}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center text-blue-200 hover:text-white text-sm underline"
-                        >
-                          Download
-                        </a>
+                  <div className="flex items-start gap-2 sm:gap-3 mb-2 sm:mb-3">
+                    <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-rose-500 rounded-full mt-1.5 sm:mt-2 flex-shrink-0 shadow-sm"></div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-800 leading-tight mb-1 sm:mb-2">
+                        {notifications[currentIndex].message ||
+                          notifications[currentIndex].title}
+                      </h4>
+                      <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-gray-600">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          <span className="text-xs">
+                            {notifications[currentIndex].date ||
+                              (notifications[currentIndex].createdAt?.toDate
+                                ? notifications[currentIndex].createdAt
+                                    .toDate()
+                                    .toLocaleDateString()
+                                : "Recent")}
+                          </span>
+                        </div>
+                        {notifications[currentIndex].downloadUrl && (
+                          <a
+                            href={notifications[currentIndex].downloadUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-violet-600 hover:text-violet-800 flex items-center gap-1 bg-violet-50 px-1.5 py-0.5 rounded-md transition-all duration-300 hover:bg-violet-100"
+                          >
+                            <Download className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                            <span className="text-xs font-medium">
+                              Download
+                            </span>
+                          </a>
+                        )}
+                        {notifications[currentIndex].isNew && (
+                          <span className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-1.5 sm:px-2 py-0.5 text-xs rounded-full font-bold shadow-sm animate-pulse">
+                            NEW
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
                   </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* View All Button */}
-        <div className="text-center pb-6">
-          <button
-            onClick={handleViewAll}
-            className="bg-white text-blue-600 px-8 py-3 rounded-lg font-bold text-lg hover:bg-blue-50 transform hover:scale-105 transition-all duration-200 shadow-lg"
-          >
-            {showAllNotifications ? "SHOW RECENT" : "VIEW ALL"}
-          </button>
+                {/* Progress indicator */}
+                {notifications.length > 1 && (
+                  <div className="flex gap-1 justify-center mt-2 sm:mt-3">
+                    {notifications.map((_, index) => (
+                      <button
+                        key={index}
+                        className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 cursor-pointer hover:scale-125 ${
+                          index === currentIndex
+                            ? "bg-gradient-to-r from-violet-500 to-rose-500 shadow-lg"
+                            : "bg-gray-300 hover:bg-gray-400"
+                        }`}
+                        onClick={() => setCurrentIndex(index)}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                {notifications.length > 1 && (
+                  <button
+                    onClick={handleViewAll}
+                    className="w-full bg-gradient-to-r from-violet-600 via-rose-500 to-emerald-500 text-white py-2 sm:py-2.5 lg:py-3 px-3 sm:px-4 rounded-xl font-bold hover:shadow-lg transition-all duration-300 flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm relative overflow-hidden group"
+                  >
+                    <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <Eye className="w-3 h-3 sm:w-4 sm:h-4 relative z-10" />
+                    <span className="relative z-10">
+                      VIEW ALL ({notifications.length})
+                    </span>
+                  </button>
+                )}
+              </div>
+            ) : (
+              // All notifications view
+              <div className="space-y-2 sm:space-y-3 max-h-60 sm:max-h-80 lg:max-h-96 overflow-y-auto custom-scrollbar">
+                <div className="flex items-center justify-between mb-2 sm:mb-3 sticky top-0 bg-gradient-to-r from-white via-violet-50/50 to-rose-50/30 backdrop-blur-sm py-1 rounded-lg">
+                  <h4 className="font-bold text-gray-800 text-xs sm:text-sm flex items-center gap-1.5">
+                    <div className="w-2 h-2 bg-gradient-to-r from-violet-500 to-rose-500 rounded-full"></div>
+                    All Notifications ({notifications.length})
+                  </h4>
+                  <button
+                    onClick={handleBackToRotation}
+                    className="text-violet-600 hover:text-violet-800 text-xs font-medium bg-violet-100 px-2 py-1 rounded-md transition-all duration-300 hover:bg-violet-200"
+                  >
+                    Back
+                  </button>
+                </div>
+
+                {notifications.map((notification, index) => (
+                  <div
+                    key={notification.id}
+                    className="bg-gradient-to-r from-white to-violet-50/30 border-l-3 border-gradient-to-b from-violet-400 to-rose-400 pl-2 sm:pl-3 py-2 sm:py-2.5 rounded-r-xl shadow-sm hover:shadow-md transition-all duration-300 group"
+                  >
+                    <div className="flex items-start gap-1.5 sm:gap-2">
+                      <div className="w-1 h-1 sm:w-1.5 sm:h-1.5 bg-gradient-to-r from-violet-500 to-rose-500 rounded-full mt-1.5 flex-shrink-0"></div>
+                      <div className="flex-1 min-w-0">
+                        <h5 className="text-xs sm:text-sm font-semibold text-gray-800 leading-tight mb-1">
+                          {notification.message || notification.title}
+                        </h5>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-gray-600 mb-1">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="w-2.5 h-2.5" />
+                            <span>
+                              {notification.date ||
+                                (notification.createdAt?.toDate
+                                  ? notification.createdAt
+                                      .toDate()
+                                      .toLocaleDateString()
+                                  : "Recent")}
+                            </span>
+                          </div>
+                          {notification.downloadUrl && (
+                            <a
+                              href={notification.downloadUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-violet-600 hover:text-violet-800 flex items-center gap-1 bg-violet-50 px-1.5 py-0.5 rounded transition-all duration-300 hover:bg-violet-100"
+                            >
+                              <Download className="w-2.5 h-2.5" />
+                              <span className="font-medium">Download</span>
+                            </a>
+                          )}
+                          {notification.isNew && (
+                            <span className="bg-gradient-to-r from-rose-500 to-pink-500 text-white px-1.5 py-0.5 text-xs rounded-full font-bold">
+                              NEW
+                            </span>
+                          )}
+                        </div>
+                        {notification.priority && (
+                          <div className="mt-1">
+                            <span
+                              className={`text-xs px-1.5 sm:px-2 py-0.5 rounded-full font-medium ${
+                                notification.priority === "high"
+                                  ? "bg-gradient-to-r from-red-100 to-red-200 text-red-800 border border-red-300"
+                                  : notification.priority === "medium"
+                                  ? "bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border border-amber-300"
+                                  : "bg-gradient-to-r from-emerald-100 to-emerald-200 text-emerald-800 border border-emerald-300"
+                              }`}
+                            >
+                              {notification.priority} priority
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* CSS Animations */}
       <style jsx>{`
-        @keyframes float-up {
-          0% {
-            transform: translateY(100%);
+        @keyframes fade-in {
+          from {
             opacity: 0;
+            transform: translateY(10px) scale(0.98);
           }
-          10% {
+          to {
             opacity: 1;
-          }
-          90% {
-            opacity: 1;
-          }
-          100% {
-            transform: translateY(-120%);
-            opacity: 0;
+            transform: translateY(0) scale(1);
           }
         }
 
-        .animate-float-up {
-          animation: float-up linear infinite;
-          animation-fill-mode: both;
+        .animate-fade-in {
+          animation: fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Custom scrollbar for all notifications view */
-        .overflow-y-auto::-webkit-scrollbar {
-          width: 6px;
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 3px;
         }
 
-        .overflow-y-auto::-webkit-scrollbar-track {
-          background: rgba(255, 255, 255, 0.1);
-          border-radius: 3px;
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
+          border-radius: 10px;
         }
 
-        .overflow-y-auto::-webkit-scrollbar-thumb {
-          background: rgba(255, 255, 255, 0.3);
-          border-radius: 3px;
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: linear-gradient(to bottom, #8b5cf6, #ec4899);
+          border-radius: 10px;
         }
 
-        .overflow-y-auto::-webkit-scrollbar-thumb:hover {
-          background: rgba(255, 255, 255, 0.5);
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: linear-gradient(to bottom, #7c3aed, #db2777);
+        }
+
+        /* Firefox */
+        .custom-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: #8b5cf6 #f3f4f6;
+        }
+
+        /* Mobile touch improvements */
+        @media (max-width: 640px) {
+          .custom-scrollbar {
+            -webkit-overflow-scrolling: touch;
+          }
+        }
+
+        /* Responsive animations */
+        @media (prefers-reduced-motion: reduce) {
+          .animate-fade-in,
+          .animate-pulse {
+            animation: none;
+          }
         }
       `}</style>
     </div>
   );
-}
+};
+
+export default MessageScroll;
