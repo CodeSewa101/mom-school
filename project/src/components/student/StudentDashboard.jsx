@@ -16,7 +16,7 @@ import {
   doc,
   getDoc,
 } from "firebase/firestore";
-import { db, auth } from "../../config/firebase";
+import { db } from "../../config/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 
 export default function StudentDashboard() {
@@ -25,7 +25,7 @@ export default function StudentDashboard() {
   const [attendance, setAttendance] = useState(0);
   const [assignmentsDue, setAssignmentsDue] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
 
   useEffect(() => {
     const fetchStudentData = async () => {
@@ -36,20 +36,28 @@ export default function StudentDashboard() {
           return;
         }
 
-        // Fetch student data from Firestore
-        const studentsRef = collection(db, "students");
-        const q = query(studentsRef, where("email", "==", currentUser.email));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-          const studentDoc = querySnapshot.docs[0];
-          const data = { id: studentDoc.id, ...studentDoc.data() };
-          setStudentData(data);
-
-          // Fetch additional data based on student info
-          await fetchStudentAdditionalData(data);
+        let studentId;
+        
+        // Handle both Firebase users and student users
+        if (currentUser.role === "student") {
+          // This is a student user from our custom login
+          studentId = currentUser.uid;
+          // Set student data from userData if available
+          if (userData) {
+            setStudentData(userData);
+            await fetchStudentAdditionalData(userData);
+          } else {
+            // Fetch student data from Firestore using the UID
+            const studentDoc = await getDoc(doc(db, "students", studentId));
+            if (studentDoc.exists()) {
+              const data = { id: studentDoc.id, ...studentDoc.data() };
+              setStudentData(data);
+              await fetchStudentAdditionalData(data);
+            }
+          }
         } else {
-          console.error("No student found with this email");
+          // This is a Firebase user (for admin, but students shouldn't be here)
+          console.error("Invalid user type");
         }
 
         setLoading(false);
@@ -92,7 +100,7 @@ export default function StudentDashboard() {
         const attendanceRef = collection(db, "attendance");
         const attendanceQuery = query(
           attendanceRef,
-          where("studentId", "==", studentData.id),
+          where("studentId", "==", studentData.id || studentData.uid),
           where("month", "==", new Date().getMonth() + 1), // Current month
           where("year", "==", new Date().getFullYear()) // Current year
         );
@@ -128,7 +136,7 @@ export default function StudentDashboard() {
     };
 
     fetchStudentData();
-  }, [currentUser]);
+  }, [currentUser, userData]);
 
   if (loading) {
     return (

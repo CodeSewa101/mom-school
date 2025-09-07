@@ -39,31 +39,17 @@ export default function Login() {
   useEffect(() => {
     // Only redirect if we have a user with a role, not loading, and haven't redirected yet
     if (!loading && !hasRedirected.current) {
-      // Check for admin user (Firebase user with role)
+      // Determine the user's role
+      let userRole = null;
+      
       if (currentUser && currentUser.role) {
-        console.log(
-          "Attempting redirect with currentUser role:",
-          currentUser.role
-        );
-        hasRedirected.current = true;
-
-        if (navigationTimeout.current) {
-          clearTimeout(navigationTimeout.current);
-        }
-
-        navigationTimeout.current = setTimeout(() => {
-          if (currentUser.role === "admin") {
-            console.log("Navigating to /admin");
-            navigate("/admin", { replace: true });
-          } else if (currentUser.role === "student") {
-            console.log("Navigating to /student");
-            navigate("/student", { replace: true });
-          }
-        }, 100);
+        userRole = currentUser.role;
+      } else if (userData && userData.role) {
+        userRole = userData.role;
       }
-      // Check for student user (role in userData)
-      else if (userData && userData.role) {
-        console.log("Attempting redirect with userData role:", userData.role);
+
+      if (userRole) {
+        console.log("Redirecting with role:", userRole);
         hasRedirected.current = true;
 
         if (navigationTimeout.current) {
@@ -71,10 +57,10 @@ export default function Login() {
         }
 
         navigationTimeout.current = setTimeout(() => {
-          if (userData.role === "admin") {
+          if (userRole === "admin") {
             console.log("Navigating to /admin");
             navigate("/admin", { replace: true });
-          } else if (userData.role === "student") {
+          } else if (userRole === "student") {
             console.log("Navigating to /student");
             navigate("/student", { replace: true });
           }

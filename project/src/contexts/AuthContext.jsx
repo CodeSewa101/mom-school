@@ -106,18 +106,37 @@ export function AuthProvider({ children }) {
       const studentDoc = querySnapshot.docs[0];
       const studentData = studentDoc.data();
 
-      // Verify password (in a real app, you should hash passwords)
+      // Verify password
       if (studentData.password !== password) {
         throw new Error("Invalid credentials");
       }
 
-      // Create a minimal user object for student
+      // Create a proper Firebase-like user object
       const studentUser = {
         uid: studentDoc.id,
         email: studentData.email || "",
         displayName: studentData.name,
         role: "student",
+        // Add these properties to match Firebase user structure
+        providerData: [{
+          providerId: "password",
+          uid: studentDoc.id,
+          displayName: studentData.name,
+          email: studentData.email || "",
+          phoneNumber: studentData.phone || ""
+        }],
+        // Mock Firebase user methods
+        getIdToken: async () => "student-token",
+        reload: async () => {}
       };
+
+      // Store in localStorage for persistence
+      localStorage.setItem('studentUser', JSON.stringify(studentUser));
+      localStorage.setItem('studentData', JSON.stringify({
+        ...studentData,
+        role: "student",
+        uid: studentDoc.id,
+      }));
 
       // Set user data with student information
       setCurrentUser(studentUser);
@@ -138,6 +157,9 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
+      // Clear both Firebase auth and student data
+      localStorage.removeItem('studentUser');
+      localStorage.removeItem('studentData');
       setCurrentUser(null);
       setUserData(null);
       setIsPublicMode(true);
@@ -158,6 +180,7 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
+        // Firebase user (admin)
         try {
           const userDoc = await getDoc(doc(db, "users", user.uid));
           if (userDoc.exists() && userDoc.data().role === "admin") {
@@ -172,9 +195,19 @@ export function AuthProvider({ children }) {
           await logout();
         }
       } else {
-        setCurrentUser(null);
-        setUserData(null);
-        setIsPublicMode(true);
+        // Check if we have a student in localStorage
+        const studentUser = localStorage.getItem('studentUser');
+        const studentData = localStorage.getItem('studentData');
+        
+        if (studentUser && studentData) {
+          setCurrentUser(JSON.parse(studentUser));
+          setUserData(JSON.parse(studentData));
+          setIsPublicMode(false);
+        } else {
+          setCurrentUser(null);
+          setUserData(null);
+          setIsPublicMode(true);
+        }
       }
       setLoading(false);
     });
