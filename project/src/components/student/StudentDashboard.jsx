@@ -1,337 +1,720 @@
 import { useState, useEffect } from "react";
 import {
+  Users,
   BookOpen,
-  Clock,
   Calendar,
+  Phone,
+  Mail,
+  MapPin,
+  GraduationCap,
+  LogOut,
+  User,
+  Clock,
   Award,
   BarChart3,
+  FileText,
   Bell,
-  UserCheck,
+  Home,
+  Bookmark,
+  Download,
+  Upload,
+  Settings,
 } from "lucide-react";
 import {
   collection,
   getDocs,
   query,
   where,
-  doc,
-  getDoc,
+  orderBy,
+  limit,
+  getCountFromServer,
 } from "firebase/firestore";
 import { db } from "../../config/firebase";
-import { useAuth } from "../../contexts/AuthContext";
 
-export default function StudentDashboard() {
-  const [studentData, setStudentData] = useState(null);
+export default function StudentDashboard({ student, onLogout }) {
+  const [attendance, setAttendance] = useState([]);
+  const [grades, setGrades] = useState([]);
   const [timetable, setTimetable] = useState([]);
-  const [attendance, setAttendance] = useState(0);
-  const [assignmentsDue, setAssignmentsDue] = useState(0);
+  const [assignments, setAssignments] = useState([]);
+  const [announcements, setAnnouncements] = useState([]);
   const [loading, setLoading] = useState(true);
-  const { currentUser, userData } = useAuth();
+  const [activeTab, setActiveTab] = useState("overview");
+  const [stats, setStats] = useState({
+    totalClasses: 0,
+    classesAttended: 0,
+    attendancePercentage: 0,
+    averageGrade: 0,
+  });
+
+  // Add state to track if student data is available
+  const [hasStudentData, setHasStudentData] = useState(false);
 
   useEffect(() => {
-    const fetchStudentData = async () => {
-      try {
-        if (!currentUser) {
-          console.error("No user logged in");
-          setLoading(false);
-          return;
-        }
+    if (student && student.id) {
+      console.log("Student data received:", student);
+      setHasStudentData(true);
+      fetchStudentData();
+    } else {
+      console.error("No student data provided to dashboard");
+      setLoading(false);
+      setHasStudentData(false);
+    }
+  }, [student]);
 
-        let studentId;
-        
-        // Handle both Firebase users and student users
-        if (currentUser.role === "student") {
-          // This is a student user from our custom login
-          studentId = currentUser.uid;
-          // Set student data from userData if available
-          if (userData) {
-            setStudentData(userData);
-            await fetchStudentAdditionalData(userData);
-          } else {
-            // Fetch student data from Firestore using the UID
-            const studentDoc = await getDoc(doc(db, "students", studentId));
-            if (studentDoc.exists()) {
-              const data = { id: studentDoc.id, ...studentDoc.data() };
-              setStudentData(data);
-              await fetchStudentAdditionalData(data);
-            }
-          }
-        } else {
-          // This is a Firebase user (for admin, but students shouldn't be here)
-          console.error("Invalid user type");
-        }
+  const fetchStudentData = async () => {
+    try {
+      setLoading(true);
+      console.log("Fetching data for student:", student.id);
 
-        setLoading(false);
-      } catch (error) {
-        console.error("Error fetching student data:", error);
-        setLoading(false);
-      }
-    };
+      // Fetch attendance records
+      const attendanceRef = collection(db, "attendance");
+      const attendanceQuery = query(
+        attendanceRef,
+        where("studentId", "==", student.id),
+        orderBy("date", "desc"),
+        limit(10)
+      );
+      const attendanceSnapshot = await getDocs(attendanceQuery);
+      const attendanceData = attendanceSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Attendance data:", attendanceData);
+      setAttendance(attendanceData);
 
-    const fetchStudentAdditionalData = async (studentData) => {
-      try {
-        // Fetch timetable for student's class
-        if (studentData.class && studentData.section) {
-          const timetableRef = collection(db, "timetables");
-          const timetableQuery = query(
-            timetableRef,
-            where("class", "==", studentData.class),
-            where("section", "==", studentData.section)
-          );
-          const timetableSnapshot = await getDocs(timetableQuery);
+      // Calculate attendance stats
+      const totalClasses = attendanceData.length;
+      const classesAttended = attendanceData.filter(
+        (a) => a.status === "present"
+      ).length;
+      const attendancePercentage =
+        totalClasses > 0
+          ? Math.round((classesAttended / totalClasses) * 100)
+          : 0;
 
-          if (!timetableSnapshot.empty) {
-            const today = new Date().getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const days = [
-              "sunday",
-              "monday",
-              "tuesday",
-              "wednesday",
-              "thursday",
-              "friday",
-              "saturday",
-            ];
-            const todaySchedule =
-              timetableSnapshot.docs[0].data()[days[today]] || [];
-            setTimetable(todaySchedule);
-          }
-        }
+      // Fetch grades
+      const gradesRef = collection(db, "grades");
+      const gradesQuery = query(
+        gradesRef,
+        where("studentId", "==", student.id),
+        orderBy("subject")
+      );
+      const gradesSnapshot = await getDocs(gradesQuery);
+      const gradesData = gradesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Grades data:", gradesData);
+      setGrades(gradesData);
 
-        // Fetch attendance data
-        const attendanceRef = collection(db, "attendance");
-        const attendanceQuery = query(
-          attendanceRef,
-          where("studentId", "==", studentData.id || studentData.uid),
-          where("month", "==", new Date().getMonth() + 1), // Current month
-          where("year", "==", new Date().getFullYear()) // Current year
+      // Calculate average grade
+      const numericGrades = gradesData
+        .filter((g) => !isNaN(parseFloat(g.grade)))
+        .map((g) => parseFloat(g.grade));
+      const averageGrade =
+        numericGrades.length > 0
+          ? (
+              numericGrades.reduce((sum, grade) => sum + grade, 0) /
+              numericGrades.length
+            ).toFixed(1)
+          : "N/A";
+
+      // Fetch timetable
+      const timetableRef = collection(db, "timetable");
+      const timetableQuery = query(
+        timetableRef,
+        where("class", "==", student.class),
+        where("section", "==", student.section),
+        orderBy("dayOfWeek"),
+        orderBy("period")
+      );
+      const timetableSnapshot = await getDocs(timetableQuery);
+      const timetableData = timetableSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Timetable data:", timetableData);
+      setTimetable(timetableData);
+
+      // Fetch assignments
+      const assignmentsRef = collection(db, "assignments");
+      const assignmentsQuery = query(
+        assignmentsRef,
+        where("class", "==", student.class),
+        where("section", "==", student.section),
+        orderBy("dueDate", "desc"),
+        limit(5)
+      );
+      const assignmentsSnapshot = await getDocs(assignmentsQuery);
+      const assignmentsData = assignmentsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Assignments data:", assignmentsData);
+      setAssignments(assignmentsData);
+
+      // Fetch announcements
+      const announcementsRef = collection(db, "announcements");
+      const announcementsQuery = query(
+        announcementsRef,
+        orderBy("date", "desc"),
+        limit(5)
+      );
+      const announcementsSnapshot = await getDocs(announcementsQuery);
+      const announcementsData = announcementsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }));
+      console.log("Announcements data:", announcementsData);
+      setAnnouncements(announcementsData);
+
+      // Set stats
+      setStats({
+        totalClasses,
+        classesAttended,
+        attendancePercentage,
+        averageGrade,
+      });
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      setLoading(false);
+    }
+  };
+
+  const getDayName = (dayNumber) => {
+    const days = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    return days[dayNumber] || "Unknown";
+  };
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return "N/A";
+    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+  };
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case "overview":
+        return (
+          <>
+            {/* Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg text-white">
+                <div className="flex items-center">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <BarChart3 className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium">Attendance</h3>
+                    <p className="text-2xl font-bold">
+                      {stats.attendancePercentage}%
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-2 text-xs opacity-80">
+                  {stats.classesAttended} of {stats.totalClasses} classes
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-5 rounded-xl shadow-lg text-white">
+                <div className="flex items-center">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <Award className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium">Average Grade</h3>
+                    <p className="text-2xl font-bold">{stats.averageGrade}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-5 rounded-xl shadow-lg text-white">
+                <div className="flex items-center">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <BookOpen className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium">Subjects</h3>
+                    <p className="text-2xl font-bold">
+                      {
+                        [...new Set(grades.map((grade) => grade.subject))]
+                          .length
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gradient-to-br from-orange-500 to-red-600 p-5 rounded-xl shadow-lg text-white">
+                <div className="flex items-center">
+                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+                    <FileText className="h-6 w-6" />
+                  </div>
+                  <div className="ml-4">
+                    <h3 className="text-sm font-medium">Pending Assignments</h3>
+                    <p className="text-2xl font-bold">
+                      {
+                        assignments.filter((a) => {
+                          const dueDate = a.dueDate?.toDate();
+                          return dueDate && dueDate > new Date();
+                        }).length
+                      }
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Attendance Section */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
+                  Recent Attendance
+                </h3>
+                {attendance.length > 0 ? (
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {attendance.slice(0, 10).map((record) => (
+                      <div
+                        key={record.id}
+                        className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                      >
+                        <div>
+                          <span className="text-gray-700 block">
+                            {formatDate(record.date)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {record.subject || "General"}
+                          </span>
+                        </div>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            record.status === "present"
+                              ? "bg-green-100 text-green-800"
+                              : record.status === "absent"
+                              ? "bg-red-100 text-red-800"
+                              : "bg-yellow-100 text-yellow-800"
+                          }`}
+                        >
+                          {record.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 py-4 text-center">
+                    No attendance records found.
+                  </p>
+                )}
+              </div>
+
+              {/* Grades Section */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <Award className="h-5 w-5 mr-2 text-indigo-500" />
+                  Grades
+                </h3>
+                {grades.length > 0 ? (
+                  <div className="space-y-3 max-h-80 overflow-y-auto">
+                    {grades.map((grade) => (
+                      <div
+                        key={grade.id}
+                        className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
+                      >
+                        <span className="text-gray-700">{grade.subject}</span>
+                        <div className="flex items-center">
+                          <span className="font-semibold mr-2">
+                            {grade.grade}
+                          </span>
+                          {grade.maxGrade && (
+                            <span className="text-xs text-gray-500">
+                              / {grade.maxGrade}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 py-4 text-center">
+                    No grades available yet.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+              {/* Assignments Section */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <FileText className="h-5 w-5 mr-2 text-indigo-500" />
+                  Recent Assignments
+                </h3>
+                {assignments.length > 0 ? (
+                  <div className="space-y-4">
+                    {assignments.map((assignment) => {
+                      const dueDate = assignment.dueDate?.toDate();
+                      const isOverdue = dueDate && dueDate < new Date();
+                      const isUpcoming = dueDate && dueDate > new Date();
+
+                      return (
+                        <div
+                          key={assignment.id}
+                          className={`p-3 rounded-lg border ${
+                            isOverdue
+                              ? "bg-red-50 border-red-200"
+                              : isUpcoming
+                              ? "bg-blue-50 border-blue-200"
+                              : "bg-gray-50 border-gray-200"
+                          }`}
+                        >
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h4 className="font-medium text-gray-900">
+                                {assignment.title}
+                              </h4>
+                              <p className="text-sm text-gray-600 mt-1">
+                                {assignment.subject}
+                              </p>
+                            </div>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                isOverdue
+                                  ? "bg-red-100 text-red-800"
+                                  : isUpcoming
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-gray-100 text-gray-800"
+                              }`}
+                            >
+                              {dueDate
+                                ? formatDate(assignment.dueDate)
+                                : "No due date"}
+                            </span>
+                          </div>
+                          {assignment.description && (
+                            <p className="text-sm text-gray-600 mt-2">
+                              {assignment.description}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 py-4 text-center">
+                    No assignments available.
+                  </p>
+                )}
+              </div>
+
+              {/* Announcements Section */}
+              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
+                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+                  <Bell className="h-5 w-5 mr-2 text-indigo-500" />
+                  Announcements
+                </h3>
+                {announcements.length > 0 ? (
+                  <div className="space-y-4">
+                    {announcements.map((announcement) => (
+                      <div
+                        key={announcement.id}
+                        className="p-3 rounded-lg bg-yellow-50 border border-yellow-200"
+                      >
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-medium text-gray-900">
+                            {announcement.title}
+                          </h4>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(announcement.date)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600 mt-2">
+                          {announcement.message}
+                        </p>
+                        {announcement.author && (
+                          <p className="text-xs text-gray-500 mt-2">
+                            - {announcement.author}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-gray-500 py-4 text-center">
+                    No announcements available.
+                  </p>
+                )}
+              </div>
+            </div>
+          </>
         );
-        const attendanceSnapshot = await getDocs(attendanceQuery);
 
-        if (!attendanceSnapshot.empty) {
-          const attendanceData = attendanceSnapshot.docs[0].data();
-          const totalDays = attendanceData.totalDays || 1;
-          const presentDays = attendanceData.presentDays || 0;
-          const attendancePercentage = Math.round(
-            (presentDays / totalDays) * 100
-          );
-          setAttendance(attendancePercentage);
-        }
-
-        // Fetch assignments due
-        const assignmentsRef = collection(db, "assignments");
-        const currentDate = new Date();
-        const threeDaysLater = new Date();
-        threeDaysLater.setDate(currentDate.getDate() + 3);
-
-        const assignmentsQuery = query(
-          assignmentsRef,
-          where("dueDate", ">=", currentDate),
-          where("dueDate", "<=", threeDaysLater),
-          where("class", "==", studentData.class)
+      case "timetable":
+        return (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+              <Clock className="h-5 w-5 mr-2 text-indigo-500" />
+              Weekly Timetable
+            </h3>
+            {timetable.length > 0 ? (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Day/Period
+                      </th>
+                      {[...Array(8)].map((_, i) => (
+                        <th
+                          key={i}
+                          className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                        >
+                          Period {i + 1}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {[0, 1, 2, 3, 4, 5].map((day) => {
+                      const dayTimetable = timetable.filter(
+                        (item) => item.dayOfWeek === day
+                      );
+                      return (
+                        <tr key={day}>
+                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {getDayName(day)}
+                          </td>
+                          {[...Array(8)].map((_, period) => {
+                            const subject = dayTimetable.find(
+                              (item) => item.period === period + 1
+                            );
+                            return (
+                              <td
+                                key={period}
+                                className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500"
+                              >
+                                {subject ? subject.subject : "-"}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <p className="text-gray-500 py-4 text-center">
+                Timetable not available.
+              </p>
+            )}
+          </div>
         );
-        const assignmentsSnapshot = await getDocs(assignmentsQuery);
-        setAssignmentsDue(assignmentsSnapshot.size);
-      } catch (error) {
-        console.error("Error fetching additional data:", error);
-      }
-    };
 
-    fetchStudentData();
-  }, [currentUser, userData]);
+      case "profile":
+        return (
+          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+              <User className="h-5 w-5 mr-2 text-indigo-500" />
+              Student Profile
+            </h3>
+
+            <div className="flex flex-col md:flex-row items-start md:items-center">
+              <div className="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
+                <img
+                  className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-sm"
+                  src={
+                    student?.photo ||
+                    "https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100"
+                  }
+                  alt={student?.name || "Student"}
+                />
+              </div>
+              <div className="flex-grow">
+                <h2 className="text-2xl font-bold text-gray-900">
+                  {student?.name || "No Name Provided"}
+                </h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                  <div className="flex items-center text-gray-600">
+                    <GraduationCap className="h-5 w-5 mr-2 text-indigo-500" />
+                    <span>
+                      Class {student?.class || "N/A"} - Section{" "}
+                      {student?.section || "N/A"}
+                    </span>
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
+                    <span>Roll No: {student?.rollNumber || "N/A"}</span>
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <Mail className="h-5 w-5 mr-2 text-indigo-500" />
+                    <span>{student?.email || "No email provided"}</span>
+                  </div>
+                  <div className="flex items-center text-gray-600">
+                    <Phone className="h-5 w-5 mr-2 text-indigo-500" />
+                    <span>{student?.phone || "N/A"}</span>
+                  </div>
+                  {student?.birthDate && (
+                    <div className="flex items-center text-gray-600">
+                      <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
+                      <span>DOB: {formatDate(student.birthDate)}</span>
+                    </div>
+                  )}
+                  {student?.bloodGroup && (
+                    <div className="flex items-center text-gray-600">
+                      <span className="mr-2 text-indigo-500">🩸</span>
+                      <span>Blood Group: {student.bloodGroup}</span>
+                    </div>
+                  )}
+                  {student?.address && (
+                    <div className="flex items-center text-gray-600 md:col-span-2">
+                      <MapPin className="h-5 w-5 mr-2 text-indigo-500" />
+                      <span>{student.address}</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Parent Information */}
+                {(student?.parentName || student?.parentPhone) && (
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Parent/Guardian Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {student.parentName && (
+                        <div className="flex items-center text-gray-600">
+                          <User className="h-5 w-5 mr-2 text-indigo-500" />
+                          <span>{student.parentName}</span>
+                        </div>
+                      )}
+                      {student.parentPhone && (
+                        <div className="flex items-center text-gray-600">
+                          <Phone className="h-5 w-5 mr-2 text-indigo-500" />
+                          <span>{student.parentPhone}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return <div>Select a tab to view content</div>;
+    }
+  };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-7xl mx-auto">
-          <div className="animate-pulse space-y-6">
-            <div className="h-8 bg-gray-200 rounded w-64"></div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="bg-white rounded-xl p-6 h-32 shadow-sm"
-                ></div>
-              ))}
-            </div>
-          </div>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!hasStudentData) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-4">
+            Student Data Not Available
+          </h2>
+          <p className="text-gray-600 mb-6">Please try logging in again.</p>
+          <button
+            onClick={onLogout}
+            className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors flex items-center space-x-2 mx-auto"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Return to Login</span>
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Student Dashboard
-          </h1>
-          <p className="text-gray-600 mt-2">
-            Welcome back, {studentData?.name || "Student"}! Here's your schedule
-            for today.
-          </p>
-          {studentData && (
-            <p className="text-sm text-gray-500 mt-1">
-              Class {studentData.class} - Section {studentData.section}
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
+              <User className="h-8 w-8 text-indigo-600" />
+              Student Dashboard
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Welcome back, {student?.name || "Student"}!
             </p>
-          )}
+          </div>
+          <button
+            onClick={onLogout}
+            className="bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-red-700 transition-colors flex items-center space-x-2 mt-4 md:mt-0"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>Logout</span>
+          </button>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          <div className="bg-blue-500 rounded-xl shadow-lg p-6 text-white transform transition-all hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium opacity-90">
-                  Today's Classes
-                </p>
-                <p className="text-2xl font-bold mt-2">{timetable.length}</p>
-                <p className="text-sm text-blue-200 mt-1">
-                  {timetable.length > 0
-                    ? "Check schedule below"
-                    : "No classes today"}
-                </p>
-              </div>
-              <div className="p-3 rounded-xl bg-white bg-opacity-20">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-green-500 rounded-xl shadow-lg p-6 text-white transform transition-all hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium opacity-90">Attendance</p>
-                <p className="text-2xl font-bold mt-2">{attendance}%</p>
-                <p className="text-sm text-green-200 mt-1">This month</p>
-              </div>
-              <div className="p-3 rounded-xl bg-white bg-opacity-20">
-                <UserCheck className="h-6 w-6 text-white" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-amber-500 rounded-xl shadow-lg p-6 text-white transform transition-all hover:scale-105">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium opacity-90">
-                  Assignments Due
-                </p>
-                <p className="text-2xl font-bold mt-2">{assignmentsDue}</p>
-                <p className="text-sm text-amber-200 mt-1">Next 3 days</p>
-              </div>
-              <div className="p-3 rounded-xl bg-white bg-opacity-20">
-                <Award className="h-6 w-6 text-white" />
-              </div>
-            </div>
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-sm p-2 mb-6 border border-gray-100">
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                activeTab === "overview"
+                  ? "bg-indigo-100 text-indigo-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <Home className="h-4 w-4" />
+              <span>Overview</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("timetable")}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                activeTab === "timetable"
+                  ? "bg-indigo-100 text-indigo-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <Clock className="h-4 w-4" />
+              <span>Timetable</span>
+            </button>
+            <button
+              onClick={() => setActiveTab("profile")}
+              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
+                activeTab === "profile"
+                  ? "bg-indigo-100 text-indigo-700"
+                  : "text-gray-600 hover:bg-gray-100"
+              }`}
+            >
+              <User className="h-4 w-4" />
+              <span>Profile</span>
+            </button>
           </div>
         </div>
 
-        {/* Two-column layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Today's Timetable */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-            <h2 className="text-xl font-bold text-gray-900 mb-6 flex items-center">
-              <Clock className="h-6 w-6 text-blue-600 mr-2" />
-              Today's Schedule
-            </h2>
-            {timetable.length > 0 ? (
-              <div className="space-y-4">
-                {timetable.map((classItem, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-200"
-                  >
-                    <div className="flex items-center space-x-4">
-                      <div className="bg-blue-100 p-2 rounded-lg">
-                        <Clock className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-gray-900">
-                          {classItem.subject}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {classItem.teacher}
-                        </p>
-                      </div>
-                    </div>
-                    <span className="text-sm font-medium text-gray-700 bg-white px-3 py-1 rounded-full border">
-                      {classItem.time}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="h-12 w-12 mx-auto mb-3 text-gray-300" />
-                <p>No classes scheduled for today</p>
-              </div>
-            )}
-          </div>
-
-          {/* Quick Links and Notices */}
-          <div className="space-y-6">
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-4">
-                Quick Links
-              </h2>
-              <div className="space-y-3">
-                <button
-                  onClick={() => (window.location.href = "/student/homework")}
-                  className="w-full flex items-center space-x-3 p-3 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors"
-                >
-                  <BookOpen className="h-5 w-5 text-blue-600" />
-                  <span className="font-medium text-blue-600">
-                    Study Materials
-                  </span>
-                </button>
-                <button
-                  onClick={() => (window.location.href = "/student/results")}
-                  className="w-full flex items-center space-x-3 p-3 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
-                >
-                  <BarChart3 className="h-5 w-5 text-green-600" />
-                  <span className="font-medium text-green-600">
-                    Grades & Results
-                  </span>
-                </button>
-                <button
-                  onClick={() => (window.location.href = "/timetable")}
-                  className="w-full flex items-center space-x-3 p-3 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors"
-                >
-                  <Calendar className="h-5 w-5 text-amber-600" />
-                  <span className="font-medium text-amber-600">
-                    Academic Calendar
-                  </span>
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-4 flex items-center">
-                <Bell className="h-5 w-5 text-purple-600 mr-2" />
-                Recent Notices
-              </h2>
-              <div className="space-y-3">
-                <div className="p-3 bg-purple-50 rounded-xl border border-purple-100">
-                  <p className="text-sm font-medium text-purple-900">
-                    Annual Sports Day
-                  </p>
-                  <p className="text-xs text-purple-700 mt-1">
-                    Posted 2 days ago
-                  </p>
-                </div>
-                <div className="p-3 bg-blue-50 rounded-xl border border-blue-100">
-                  <p className="text-sm font-medium text-blue-900">
-                    Parent-Teacher Meeting
-                  </p>
-                  <p className="text-xs text-blue-700 mt-1">
-                    Posted 5 days ago
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Tab Content */}
+        {renderTabContent()}
       </div>
     </div>
   );

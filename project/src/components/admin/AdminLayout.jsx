@@ -394,7 +394,7 @@ const getAdminMenuItems = () => [
   },
   { 
     name: "Exams & Results", 
-    path: "/admin/exams", 
+    path: "/admin/results", 
     icon: Award, 
     color: "from-indigo-500 to-indigo-600",
     hoverColor: "hover:from-indigo-600 hover:to-indigo-700",
