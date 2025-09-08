@@ -3,13 +3,9 @@ import {
   BellIcon,
   CalendarIcon,
   ChartBarIcon,
-  BookOpenIcon,
   UserCircleIcon,
-  ClockIcon,
-  CheckCircleIcon,
   CreditCardIcon,
   TableCellsIcon,
-  DocumentTextIcon,
   IdentificationIcon,
   UserGroupIcon,
   AcademicCapIcon as AcademicCapSolid,
@@ -23,9 +19,6 @@ const StudentDashboard = () => {
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
-  const [courses, setCourses] = useState([]);
-  const [upcomingAssignments, setUpcomingAssignments] = useState([]);
-  const [timetable, setTimetable] = useState([]);
   const [feeStatus, setFeeStatus] = useState({});
   const [results, setResults] = useState({});
   const [attendance, setAttendance] = useState({});
@@ -61,18 +54,17 @@ const StudentDashboard = () => {
       // Fetch student-specific data from Firebase
       const [
         notificationsSnapshot, 
-        coursesSnapshot, 
-        assignmentsSnapshot, 
         feeSnapshot, 
         resultsSnapshot, 
         attendanceSnapshot
       ] = await Promise.allSettled([
         getDocs(query(collection(db, "notifications"), where("studentId", "==", student.id))),
-        getDocs(query(collection(db, "studentCourses"), where("studentId", "==", student.id))),
-        getDocs(query(collection(db, "assignments"), where("studentId", "==", student.id), where("status", "in", ["pending", "due"]))),
         getDocs(query(collection(db, "feePayments"), where("studentId", "==", student.id), orderBy("dueDate", "desc"), limit(1))),
         getDocs(query(collection(db, "results"), where("studentId", "==", student.id), orderBy("semester", "desc"), limit(1))),
-        getDocs(query(collection(db, "attendance"), where("studentId", "==", student.id), orderBy("date", "desc"), limit(1))),
+        getDocs(query(
+          collection(db, "attendance"), 
+          where("studentId", "==", student.id)
+        )),
       ]);
 
       // Process notifications
@@ -84,28 +76,6 @@ const StudentDashboard = () => {
         setNotifications(notificationsData);
       } else {
         setNotifications(getMockNotifications());
-      }
-
-      // Process courses
-      if (coursesSnapshot.status === 'fulfilled' && !coursesSnapshot.value.empty) {
-        const coursesData = coursesSnapshot.value.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setCourses(coursesData);
-      } else {
-        setCourses(getMockCourses());
-      }
-
-      // Process assignments
-      if (assignmentsSnapshot.status === 'fulfilled' && !assignmentsSnapshot.value.empty) {
-        const assignmentsData = assignmentsSnapshot.value.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setUpcomingAssignments(assignmentsData);
-      } else {
-        setUpcomingAssignments(getMockAssignments());
       }
 
       // Process fee status
@@ -122,15 +92,28 @@ const StudentDashboard = () => {
         setResults(getMockResults());
       }
 
-      // Process attendance
+      // Process attendance - Calculate attendance percentage
       if (attendanceSnapshot.status === 'fulfilled' && !attendanceSnapshot.value.empty) {
-        setAttendance(attendanceSnapshot.value.docs[0].data());
+        const attendanceData = attendanceSnapshot.value.docs.map(doc => doc.data());
+        
+        // Calculate attendance statistics
+        const totalRecords = attendanceData.length;
+        const presentRecords = attendanceData.filter(record => record.status === "present").length;
+        const absentRecords = attendanceData.filter(record => record.status === "absent").length;
+        const attendancePercentage = totalRecords > 0 
+          ? Math.round((presentRecords / totalRecords) * 100) 
+          : 0;
+        
+        setAttendance({
+          percentage: attendancePercentage,
+          present: presentRecords,
+          total: totalRecords,
+          absent: absentRecords,
+          records: attendanceData // Store all records for potential future use
+        });
       } else {
         setAttendance(getMockAttendance());
       }
-
-      // Fetch timetable for the student's class
-      fetchTimetableForClass(student.class);
 
     } catch (error) {
       console.error("Error fetching student data:", error);
@@ -157,44 +140,6 @@ const StudentDashboard = () => {
     },
   ];
 
-  const getMockCourses = () => [
-    {
-      id: "course-1",
-      name: "Mathematics",
-      code: "MATH101",
-      teacher: "Dr. Smith",
-      progress: 75,
-      credits: 4,
-      room: "Room 301",
-    },
-    {
-      id: "course-2",
-      name: "Science",
-      code: "SCI201",
-      teacher: "Prof. Johnson",
-      progress: 60,
-      credits: 3,
-      room: "Lab B",
-    },
-  ];
-
-  const getMockAssignments = () => [
-    {
-      id: "assign-1",
-      title: "Algebra Homework",
-      course: "Mathematics",
-      status: "pending",
-      dueDate: { seconds: Date.now() / 1000 + 86400 * 2 },
-    },
-    {
-      id: "assign-2",
-      title: "Science Project",
-      course: "Science",
-      status: "completed",
-      dueDate: { seconds: Date.now() / 1000 - 86400 },
-    },
-  ];
-
   const getMockFeeStatus = () => ({
     status: "paid",
     amount: 500,
@@ -215,62 +160,9 @@ const StudentDashboard = () => {
 
   const setMockData = () => {
     setNotifications(getMockNotifications());
-    setCourses(getMockCourses());
-    setUpcomingAssignments(getMockAssignments());
     setFeeStatus(getMockFeeStatus());
     setResults(getMockResults());
     setAttendance(getMockAttendance());
-  };
-
-  const fetchTimetableForClass = async (className) => {
-    try {
-      const q = query(
-        collection(db, "timetables"),
-        where("__name__", "==", className)
-      );
-      const querySnapshot = await getDocs(q);
-
-      if (!querySnapshot.empty) {
-        const timetableData = querySnapshot.docs[0].data();
-        const timeSlots = timetableData.timeSlots || [];
-        const days = [
-          "Monday",
-          "Tuesday",
-          "Wednesday",
-          "Thursday",
-          "Friday",
-          "Saturday",
-        ];
-
-        const formattedTimetable = [];
-
-        days.forEach((day) => {
-          timeSlots.forEach((slot) => {
-            if (
-              timetableData[day] &&
-              timetableData[day][slot.text] &&
-              !slot.isBreak
-            ) {
-              formattedTimetable.push({
-                day,
-                time: slot.text,
-                subject: timetableData[day][slot.text].subject,
-                room: timetableData[day][slot.text].room || "TBA",
-                teacher: timetableData[day][slot.text].teacher || "Teacher",
-              });
-            }
-          });
-        });
-
-        setTimetable(formattedTimetable);
-      } else {
-        console.log("No timetable found for class:", className);
-        setTimetable([]);
-      }
-    } catch (error) {
-      console.error("Error fetching timetable:", error);
-      setTimetable([]);
-    }
   };
 
   const markAsRead = (id) => {
@@ -420,197 +312,19 @@ const StudentDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Column - Courses and Assignments */}
+        {/* Left Column - Empty space where courses and assignments were removed */}
         <div className="lg:col-span-2 space-y-6">
-          {/* My Courses */}
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">My Courses</h2>
-              <span className="text-sm text-gray-500">
-                {courses.length} courses
-              </span>
+          {/* This space is intentionally left blank after removing courses, assignments, and timetable sections */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden p-8 text-center">
+            <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100">
+              <IdentificationIcon className="h-8 w-8 text-blue-600" />
             </div>
-            <div className="p-4 md:p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {courses.length > 0 ? (
-                  courses.map((course) => (
-                    <div
-                      key={course.id}
-                      className="border rounded-xl p-4 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50"
-                    >
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="font-medium text-gray-900">
-                            {course.name}
-                          </h3>
-                          <p className="text-sm text-gray-600">{course.code}</p>
-                        </div>
-                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
-                          {course.teacher || "Instructor"}
-                        </span>
-                      </div>
-                      <div className="mb-2">
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Progress</span>
-                          <span>{course.progress || 0}%</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                            style={{ width: `${course.progress || 0}%` }}
-                          ></div>
-                        </div>
-                      </div>
-                      <div className="flex justify-between text-xs text-gray-500 mt-2">
-                        <span>Credits: {course.credits || 3}</span>
-                        <span>Room: {course.room || "TBA"}</span>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="col-span-2 text-center py-8">
-                    <BookOpenIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500">No courses found</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Upcoming Assignments */}
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">
-                Upcoming Assignments
-              </h2>
-              <span className="text-sm text-gray-500">
-                {upcomingAssignments.length} assignments
-              </span>
-            </div>
-            <div className="p-4 md:p-6">
-              {upcomingAssignments.length > 0 ? (
-                <div className="space-y-4">
-                  {upcomingAssignments.map((assignment) => (
-                    <div
-                      key={assignment.id}
-                      className="flex items-center justify-between p-3 md:p-4 border rounded-xl bg-gradient-to-br from-white to-gray-50 hover:shadow-sm transition-shadow"
-                    >
-                      <div className="flex items-center space-x-3">
-                        <div
-                          className={`p-2 rounded-lg ${
-                            assignment.status === "completed"
-                              ? "bg-green-100"
-                              : "bg-yellow-100"
-                          }`}
-                        >
-                          {assignment.status === "completed" ? (
-                            <CheckCircleIcon className="h-5 w-5 text-green-600" />
-                          ) : (
-                            <ClockIcon className="h-5 w-5 text-yellow-600" />
-                          )}
-                        </div>
-                        <div>
-                          <h4 className="font-medium text-gray-900">
-                            {assignment.title}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {assignment.course}
-                          </p>
-                          {assignment.dueDate && (
-                            <p className="text-xs text-gray-500">
-                              Due:{" "}
-                              {new Date(
-                                assignment.dueDate.seconds * 1000
-                              ).toLocaleDateString()}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span
-                          className={`text-sm font-medium ${
-                            assignment.status === "completed"
-                              ? "text-green-600"
-                              : "text-yellow-600"
-                          }`}
-                        >
-                          {assignment.status === "completed"
-                            ? "Completed"
-                            : assignment.dueDate
-                            ? `Due: ${new Date(
-                                assignment.dueDate.seconds * 1000
-                              ).toLocaleDateString()}`
-                            : "Pending"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">No assignments found</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Timetable Section */}
-          <div className="bg-white rounded-xl shadow-md overflow-hidden">
-            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
-              <h2 className="text-lg font-medium text-gray-900">
-                Weekly Timetable - {studentData.class}
-              </h2>
-            </div>
-            <div className="p-4 md:p-6">
-              {timetable.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Day
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Time
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Subject
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Room
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                      {timetable.map((item, index) => (
-                        <tr key={index}>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {item.day}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.time}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.subject}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {item.room}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <TableCellsIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500">
-                    No timetable available for {studentData.class}
-                  </p>
-                </div>
-              )}
-            </div>
+            <h3 className="mt-4 text-lg font-medium text-gray-900">
+              Student Information
+            </h3>
+            <p className="mt-2 text-gray-500">
+              Your academic details and performance metrics are displayed on this dashboard.
+            </p>
           </div>
         </div>
 
@@ -666,13 +380,6 @@ const StudentDashboard = () => {
                     <p className="font-medium">
                       {studentData.academicYear || "N/A"}
                     </p>
-                  </div>
-                </div>
-                <div className="flex items-center">
-                  <BookOpenIcon className="h-4 w-4 text-gray-500 mr-2" />
-                  <div>
-                    <p className="text-gray-500">Courses</p>
-                    <p className="font-medium">{courses.length}</p>
                   </div>
                 </div>
               </div>
