@@ -1,721 +1,719 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
-  Users,
-  BookOpen,
-  Calendar,
-  Phone,
-  Mail,
-  MapPin,
-  GraduationCap,
-  LogOut,
-  User,
-  Clock,
-  Award,
-  BarChart3,
-  FileText,
-  Bell,
-  Home,
-  Bookmark,
-  Download,
-  Upload,
-  Settings,
-} from "lucide-react";
-import {
-  collection,
-  getDocs,
-  query,
-  where,
-  orderBy,
-  limit,
-  getCountFromServer,
-} from "firebase/firestore";
+  BellIcon,
+  CalendarIcon,
+  ChartBarIcon,
+  BookOpenIcon,
+  UserCircleIcon,
+  ClockIcon,
+  CheckCircleIcon,
+  CreditCardIcon,
+  TableCellsIcon,
+  DocumentTextIcon,
+  IdentificationIcon,
+  UserGroupIcon,
+  AcademicCapIcon as AcademicCapSolid,
+} from "@heroicons/react/24/outline";
+import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "../../config/firebase";
 
-export default function StudentDashboard({ student, onLogout }) {
-  const [attendance, setAttendance] = useState([]);
-  const [grades, setGrades] = useState([]);
-  const [timetable, setTimetable] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [announcements, setAnnouncements] = useState([]);
+const StudentDashboard = () => {
+  const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState("overview");
-  const [stats, setStats] = useState({
-    totalClasses: 0,
-    classesAttended: 0,
-    attendancePercentage: 0,
-    averageGrade: 0,
-  });
-
-  // Add state to track if student data is available
-  const [hasStudentData, setHasStudentData] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [upcomingAssignments, setUpcomingAssignments] = useState([]);
+  const [timetable, setTimetable] = useState([]);
+  const [feeStatus, setFeeStatus] = useState({});
+  const [results, setResults] = useState({});
+  const [attendance, setAttendance] = useState({});
 
   useEffect(() => {
-    if (student && student.id) {
-      console.log("Student data received:", student);
-      setHasStudentData(true);
-      fetchStudentData();
-    } else {
-      console.error("No student data provided to dashboard");
-      setLoading(false);
-      setHasStudentData(false);
-    }
-  }, [student]);
+    // Mock data instead of fetching from Firebase
+    const mockStudentData = {
+      id: "student-001",
+      name: "Student Name",
+      rollNumber: "STU2024001",
+      class: "Class 10", // Changed to match timetable format
+      section: "A",
+      email: "student@example.com",
+      academicYear: "2024-2025",
+    };
 
-  const fetchStudentData = async () => {
-    try {
-      setLoading(true);
-      console.log("Fetching data for student:", student.id);
-
-      // Fetch attendance records
-      const attendanceRef = collection(db, "attendance");
-      const attendanceQuery = query(
-        attendanceRef,
-        where("studentId", "==", student.id),
-        orderBy("date", "desc"),
-        limit(10)
-      );
-      const attendanceSnapshot = await getDocs(attendanceQuery);
-      const attendanceData = attendanceSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log("Attendance data:", attendanceData);
-      setAttendance(attendanceData);
-
-      // Calculate attendance stats
-      const totalClasses = attendanceData.length;
-      const classesAttended = attendanceData.filter(
-        (a) => a.status === "present"
-      ).length;
-      const attendancePercentage =
-        totalClasses > 0
-          ? Math.round((classesAttended / totalClasses) * 100)
-          : 0;
-
-      // Fetch grades
-      const gradesRef = collection(db, "grades");
-      const gradesQuery = query(
-        gradesRef,
-        where("studentId", "==", student.id),
-        orderBy("subject")
-      );
-      const gradesSnapshot = await getDocs(gradesQuery);
-      const gradesData = gradesSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log("Grades data:", gradesData);
-      setGrades(gradesData);
-
-      // Calculate average grade
-      const numericGrades = gradesData
-        .filter((g) => !isNaN(parseFloat(g.grade)))
-        .map((g) => parseFloat(g.grade));
-      const averageGrade =
-        numericGrades.length > 0
-          ? (
-              numericGrades.reduce((sum, grade) => sum + grade, 0) /
-              numericGrades.length
-            ).toFixed(1)
-          : "N/A";
-
-      // Fetch timetable
-      const timetableRef = collection(db, "timetable");
-      const timetableQuery = query(
-        timetableRef,
-        where("class", "==", student.class),
-        where("section", "==", student.section),
-        orderBy("dayOfWeek"),
-        orderBy("period")
-      );
-      const timetableSnapshot = await getDocs(timetableQuery);
-      const timetableData = timetableSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log("Timetable data:", timetableData);
-      setTimetable(timetableData);
-
-      // Fetch assignments
-      const assignmentsRef = collection(db, "assignments");
-      const assignmentsQuery = query(
-        assignmentsRef,
-        where("class", "==", student.class),
-        where("section", "==", student.section),
-        orderBy("dueDate", "desc"),
-        limit(5)
-      );
-      const assignmentsSnapshot = await getDocs(assignmentsQuery);
-      const assignmentsData = assignmentsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log("Assignments data:", assignmentsData);
-      setAssignments(assignmentsData);
-
-      // Fetch announcements
-      const announcementsRef = collection(db, "announcements");
-      const announcementsQuery = query(
-        announcementsRef,
-        orderBy("date", "desc"),
-        limit(5)
-      );
-      const announcementsSnapshot = await getDocs(announcementsQuery);
-      const announcementsData = announcementsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      }));
-      console.log("Announcements data:", announcementsData);
-      setAnnouncements(announcementsData);
-
-      // Set stats
-      setStats({
-        totalClasses,
-        classesAttended,
-        attendancePercentage,
-        averageGrade,
-      });
-
-      setLoading(false);
-    } catch (error) {
-      console.error("Error fetching student data:", error);
-      setLoading(false);
-    }
-  };
-
-  const getDayName = (dayNumber) => {
-    const days = [
-      "Sunday",
-      "Monday",
-      "Tuesday",
-      "Wednesday",
-      "Thursday",
-      "Friday",
-      "Saturday",
+    const mockNotifications = [
+      {
+        id: "notif-1",
+        message: "Your assignment has been graded",
+        read: false,
+        timestamp: { seconds: Date.now() / 1000 - 86400 }, // 1 day ago
+      },
+      {
+        id: "notif-2",
+        message: "New notice from school administration",
+        read: false,
+        timestamp: { seconds: Date.now() / 1000 - 172800 }, // 2 days ago
+      },
     ];
-    return days[dayNumber] || "Unknown";
-  };
 
-  const formatDate = (timestamp) => {
-    if (!timestamp) return "N/A";
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString("en-US", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-    });
-  };
+    const mockCourses = [
+      {
+        id: "course-1",
+        name: "Mathematics",
+        code: "MATH101",
+        teacher: "Dr. Smith",
+        progress: 75,
+        credits: 4,
+        room: "Room 301",
+      },
+      {
+        id: "course-2",
+        name: "Science",
+        code: "SCI201",
+        teacher: "Prof. Johnson",
+        progress: 60,
+        credits: 3,
+        room: "Lab B",
+      },
+    ];
 
-  const renderTabContent = () => {
-    switch (activeTab) {
-      case "overview":
-        return (
-          <>
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-              <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg text-white">
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                    <BarChart3 className="h-6 w-6" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium">Attendance</h3>
-                    <p className="text-2xl font-bold">
-                      {stats.attendancePercentage}%
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-2 text-xs opacity-80">
-                  {stats.classesAttended} of {stats.totalClasses} classes
-                </div>
-              </div>
+    const mockAssignments = [
+      {
+        id: "assign-1",
+        title: "Algebra Homework",
+        course: "Mathematics",
+        status: "pending",
+        dueDate: { seconds: Date.now() / 1000 + 86400 * 2 }, // 2 days from now
+      },
+      {
+        id: "assign-2",
+        title: "Science Project",
+        course: "Science",
+        status: "completed",
+        dueDate: { seconds: Date.now() / 1000 - 86400 }, // 1 day ago
+      },
+    ];
 
-              <div className="bg-gradient-to-br from-purple-500 to-pink-600 p-5 rounded-xl shadow-lg text-white">
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                    <Award className="h-6 w-6" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium">Average Grade</h3>
-                    <p className="text-2xl font-bold">{stats.averageGrade}</p>
-                  </div>
-                </div>
-              </div>
+    const mockFeeStatus = {
+      status: "paid",
+      amount: 500,
+      dueDate: { seconds: Date.now() / 1000 + 86400 * 30 }, // 30 days from now
+    };
 
-              <div className="bg-gradient-to-br from-teal-500 to-cyan-600 p-5 rounded-xl shadow-lg text-white">
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                    <BookOpen className="h-6 w-6" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium">Subjects</h3>
-                    <p className="text-2xl font-bold">
-                      {
-                        [...new Set(grades.map((grade) => grade.subject))]
-                          .length
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
+    const mockResults = {
+      averageGrade: "85.5",
+      semester: "1",
+    };
 
-              <div className="bg-gradient-to-br from-orange-500 to-red-600 p-5 rounded-xl shadow-lg text-white">
-                <div className="flex items-center">
-                  <div className="bg-white bg-opacity-20 p-3 rounded-lg">
-                    <FileText className="h-6 w-6" />
-                  </div>
-                  <div className="ml-4">
-                    <h3 className="text-sm font-medium">Pending Assignments</h3>
-                    <p className="text-2xl font-bold">
-                      {
-                        assignments.filter((a) => {
-                          const dueDate = a.dueDate?.toDate();
-                          return dueDate && dueDate > new Date();
-                        }).length
-                      }
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
+    const mockAttendance = {
+      percentage: 92,
+      present: 46,
+      total: 50,
+      absent: 4,
+    };
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Attendance Section */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
-                  Recent Attendance
-                </h3>
-                {attendance.length > 0 ? (
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {attendance.slice(0, 10).map((record) => (
-                      <div
-                        key={record.id}
-                        className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                      >
-                        <div>
-                          <span className="text-gray-700 block">
-                            {formatDate(record.date)}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {record.subject || "General"}
-                          </span>
-                        </div>
-                        <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            record.status === "present"
-                              ? "bg-green-100 text-green-800"
-                              : record.status === "absent"
-                              ? "bg-red-100 text-red-800"
-                              : "bg-yellow-100 text-yellow-800"
-                          }`}
-                        >
-                          {record.status}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 py-4 text-center">
-                    No attendance records found.
-                  </p>
-                )}
-              </div>
+    // Set all mock data
+    setStudentData(mockStudentData);
+    setNotifications(mockNotifications);
+    setCourses(mockCourses);
+    setUpcomingAssignments(mockAssignments);
+    setFeeStatus(mockFeeStatus);
+    setResults(mockResults);
+    setAttendance(mockAttendance);
 
-              {/* Grades Section */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <Award className="h-5 w-5 mr-2 text-indigo-500" />
-                  Grades
-                </h3>
-                {grades.length > 0 ? (
-                  <div className="space-y-3 max-h-80 overflow-y-auto">
-                    {grades.map((grade) => (
-                      <div
-                        key={grade.id}
-                        className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0"
-                      >
-                        <span className="text-gray-700">{grade.subject}</span>
-                        <div className="flex items-center">
-                          <span className="font-semibold mr-2">
-                            {grade.grade}
-                          </span>
-                          {grade.maxGrade && (
-                            <span className="text-xs text-gray-500">
-                              / {grade.maxGrade}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 py-4 text-center">
-                    No grades available yet.
-                  </p>
-                )}
-              </div>
-            </div>
+    // Fetch timetable data for the student's class
+    fetchTimetableForClass(mockStudentData.class);
+  }, []);
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-              {/* Assignments Section */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <FileText className="h-5 w-5 mr-2 text-indigo-500" />
-                  Recent Assignments
-                </h3>
-                {assignments.length > 0 ? (
-                  <div className="space-y-4">
-                    {assignments.map((assignment) => {
-                      const dueDate = assignment.dueDate?.toDate();
-                      const isOverdue = dueDate && dueDate < new Date();
-                      const isUpcoming = dueDate && dueDate > new Date();
+  const fetchTimetableForClass = async (className) => {
+    try {
+      // Query the timetables collection for the student's class
+      const q = query(
+        collection(db, "timetables"),
+        where("__name__", "==", className)
+      );
+      const querySnapshot = await getDocs(q);
 
-                      return (
-                        <div
-                          key={assignment.id}
-                          className={`p-3 rounded-lg border ${
-                            isOverdue
-                              ? "bg-red-50 border-red-200"
-                              : isUpcoming
-                              ? "bg-blue-50 border-blue-200"
-                              : "bg-gray-50 border-gray-200"
-                          }`}
-                        >
-                          <div className="flex justify-between items-start">
-                            <div>
-                              <h4 className="font-medium text-gray-900">
-                                {assignment.title}
-                              </h4>
-                              <p className="text-sm text-gray-600 mt-1">
-                                {assignment.subject}
-                              </p>
-                            </div>
-                            <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                isOverdue
-                                  ? "bg-red-100 text-red-800"
-                                  : isUpcoming
-                                  ? "bg-blue-100 text-blue-800"
-                                  : "bg-gray-100 text-gray-800"
-                              }`}
-                            >
-                              {dueDate
-                                ? formatDate(assignment.dueDate)
-                                : "No due date"}
-                            </span>
-                          </div>
-                          {assignment.description && (
-                            <p className="text-sm text-gray-600 mt-2">
-                              {assignment.description}
-                            </p>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 py-4 text-center">
-                    No assignments available.
-                  </p>
-                )}
-              </div>
+      if (!querySnapshot.empty) {
+        const timetableData = querySnapshot.docs[0].data();
+        const timeSlots = timetableData.timeSlots || [];
+        const days = [
+          "Monday",
+          "Tuesday",
+          "Wednesday",
+          "Thursday",
+          "Friday",
+          "Saturday",
+        ];
 
-              {/* Announcements Section */}
-              <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-                <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                  <Bell className="h-5 w-5 mr-2 text-indigo-500" />
-                  Announcements
-                </h3>
-                {announcements.length > 0 ? (
-                  <div className="space-y-4">
-                    {announcements.map((announcement) => (
-                      <div
-                        key={announcement.id}
-                        className="p-3 rounded-lg bg-yellow-50 border border-yellow-200"
-                      >
-                        <div className="flex justify-between items-start">
-                          <h4 className="font-medium text-gray-900">
-                            {announcement.title}
-                          </h4>
-                          <span className="text-xs text-gray-500">
-                            {formatDate(announcement.date)}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600 mt-2">
-                          {announcement.message}
-                        </p>
-                        {announcement.author && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            - {announcement.author}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-gray-500 py-4 text-center">
-                    No announcements available.
-                  </p>
-                )}
-              </div>
-            </div>
-          </>
-        );
+        // Transform the timetable data into a format suitable for display
+        const formattedTimetable = [];
 
-      case "timetable":
-        return (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-              <Clock className="h-5 w-5 mr-2 text-indigo-500" />
-              Weekly Timetable
-            </h3>
-            {timetable.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Day/Period
-                      </th>
-                      {[...Array(8)].map((_, i) => (
-                        <th
-                          key={i}
-                          className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
-                        >
-                          Period {i + 1}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {[0, 1, 2, 3, 4, 5].map((day) => {
-                      const dayTimetable = timetable.filter(
-                        (item) => item.dayOfWeek === day
-                      );
-                      return (
-                        <tr key={day}>
-                          <td className="px-4 py-3 whitespace-nowrap text-sm font-medium text-gray-900">
-                            {getDayName(day)}
-                          </td>
-                          {[...Array(8)].map((_, period) => {
-                            const subject = dayTimetable.find(
-                              (item) => item.period === period + 1
-                            );
-                            return (
-                              <td
-                                key={period}
-                                className="px-4 py-3 whitespace-nowrap text-sm text-center text-gray-500"
-                              >
-                                {subject ? subject.subject : "-"}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="text-gray-500 py-4 text-center">
-                Timetable not available.
-              </p>
-            )}
-          </div>
-        );
+        days.forEach((day) => {
+          timeSlots.forEach((slot) => {
+            if (
+              timetableData[day] &&
+              timetableData[day][slot.text] &&
+              !slot.isBreak
+            ) {
+              formattedTimetable.push({
+                day,
+                time: slot.text,
+                subject: timetableData[day][slot.text].subject,
+                room: timetableData[day][slot.text].room || "TBA",
+                teacher: timetableData[day][slot.text].teacher || "Teacher",
+              });
+            }
+          });
+        });
 
-      case "profile":
-        return (
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 mb-6">
-            <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-              <User className="h-5 w-5 mr-2 text-indigo-500" />
-              Student Profile
-            </h3>
-
-            <div className="flex flex-col md:flex-row items-start md:items-center">
-              <div className="flex-shrink-0 mb-4 md:mb-0 md:mr-6">
-                <img
-                  className="h-24 w-24 rounded-full object-cover border-4 border-white shadow-sm"
-                  src={
-                    student?.photo ||
-                    "https://images.pexels.com/photos/1450114/pexels-photo-1450114.jpeg?auto=compress&cs=tinysrgb&w=100"
-                  }
-                  alt={student?.name || "Student"}
-                />
-              </div>
-              <div className="flex-grow">
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {student?.name || "No Name Provided"}
-                </h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                  <div className="flex items-center text-gray-600">
-                    <GraduationCap className="h-5 w-5 mr-2 text-indigo-500" />
-                    <span>
-                      Class {student?.class || "N/A"} - Section{" "}
-                      {student?.section || "N/A"}
-                    </span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
-                    <span>Roll No: {student?.rollNumber || "N/A"}</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Mail className="h-5 w-5 mr-2 text-indigo-500" />
-                    <span>{student?.email || "No email provided"}</span>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Phone className="h-5 w-5 mr-2 text-indigo-500" />
-                    <span>{student?.phone || "N/A"}</span>
-                  </div>
-                  {student?.birthDate && (
-                    <div className="flex items-center text-gray-600">
-                      <Calendar className="h-5 w-5 mr-2 text-indigo-500" />
-                      <span>DOB: {formatDate(student.birthDate)}</span>
-                    </div>
-                  )}
-                  {student?.bloodGroup && (
-                    <div className="flex items-center text-gray-600">
-                      <span className="mr-2 text-indigo-500">🩸</span>
-                      <span>Blood Group: {student.bloodGroup}</span>
-                    </div>
-                  )}
-                  {student?.address && (
-                    <div className="flex items-center text-gray-600 md:col-span-2">
-                      <MapPin className="h-5 w-5 mr-2 text-indigo-500" />
-                      <span>{student.address}</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Parent Information */}
-                {(student?.parentName || student?.parentPhone) && (
-                  <div className="mt-6 pt-4 border-t border-gray-200">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
-                      Parent/Guardian Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {student.parentName && (
-                        <div className="flex items-center text-gray-600">
-                          <User className="h-5 w-5 mr-2 text-indigo-500" />
-                          <span>{student.parentName}</span>
-                        </div>
-                      )}
-                      {student.parentPhone && (
-                        <div className="flex items-center text-gray-600">
-                          <Phone className="h-5 w-5 mr-2 text-indigo-500" />
-                          <span>{student.parentPhone}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-
-      default:
-        return <div>Select a tab to view content</div>;
+        setTimetable(formattedTimetable);
+      } else {
+        console.log("No timetable found for class:", className);
+        setTimetable([]);
+      }
+    } catch (error) {
+      console.error("Error fetching timetable:", error);
+      setTimetable([]);
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const markAsRead = (id) => {
+    setNotifications(
+      notifications.map((notif) =>
+        notif.id === id ? { ...notif, read: true } : notif
+      )
+    );
+  };
+
+  const markAllAsRead = () => {
+    setNotifications(notifications.map((notif) => ({ ...notif, read: true })));
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading your dashboard...</p>
-        </div>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
       </div>
     );
   }
 
-  if (!hasStudentData) {
+  if (!studentData) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">
-            Student Data Not Available
+            Student Not Found
           </h2>
-          <p className="text-gray-600 mb-6">Please try logging in again.</p>
-          <button
-            onClick={onLogout}
-            className="bg-indigo-600 text-white px-4 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors flex items-center space-x-2 mx-auto"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Return to Login</span>
-          </button>
+          <p className="text-gray-600">No student data available.</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-              <User className="h-8 w-8 text-indigo-600" />
-              Student Dashboard
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Welcome back, {student?.name || "Student"}!
-            </p>
-          </div>
-          <button
-            onClick={onLogout}
-            className="bg-red-600 text-white px-4 py-2.5 rounded-xl hover:bg-red-700 transition-colors flex items-center space-x-2 mt-4 md:mt-0"
-          >
-            <LogOut className="h-4 w-4" />
-            <span>Logout</span>
-          </button>
+    <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      {/* Welcome Header */}
+      <div className="mb-6">
+        <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+          Welcome back, {studentData.name}!
+        </h1>
+        <div className="flex flex-wrap items-center gap-4 mt-2">
+          <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+            Roll No: {studentData.rollNumber || "N/A"}
+          </span>
+          <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+            Class: {studentData.class || "N/A"}
+          </span>
+          <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+            Section: {studentData.section || "N/A"}
+          </span>
+          {attendance.percentage && (
+            <span className="bg-amber-100 text-amber-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+              Attendance: {attendance.percentage}%
+            </span>
+          )}
         </div>
+      </div>
 
-        {/* Navigation Tabs */}
-        <div className="bg-white rounded-xl shadow-sm p-2 mb-6 border border-gray-100">
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveTab("overview")}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                activeTab === "overview"
-                  ? "bg-indigo-100 text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Home className="h-4 w-4" />
-              <span>Overview</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("timetable")}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                activeTab === "timetable"
-                  ? "bg-indigo-100 text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <Clock className="h-4 w-4" />
-              <span>Timetable</span>
-            </button>
-            <button
-              onClick={() => setActiveTab("profile")}
-              className={`px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors ${
-                activeTab === "profile"
-                  ? "bg-indigo-100 text-indigo-700"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              <User className="h-4 w-4" />
-              <span>Profile</span>
-            </button>
+      {/* Stats Overview */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        {/* Student Info Card */}
+        <div className="bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <IdentificationIcon className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium">Student ID</p>
+              <p className="text-xl md:text-2xl font-bold">
+                {studentData.rollNumber || "N/A"}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* Tab Content */}
-        {renderTabContent()}
+        {/* Fee Status Card */}
+        <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <CreditCardIcon className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium">Fee Status</p>
+              <p className="text-xl md:text-2xl font-bold">
+                {feeStatus.status === "paid" || feeStatus.paid
+                  ? "Paid"
+                  : "Pending"}
+              </p>
+              {feeStatus.dueDate && (
+                <p className="text-xs opacity-90">
+                  Due:{" "}
+                  {new Date(
+                    feeStatus.dueDate.seconds * 1000
+                  ).toLocaleDateString()}
+                </p>
+              )}
+              {feeStatus.amount && (
+                <p className="text-xs opacity-90">
+                  Amount: ${feeStatus.amount}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance Card */}
+        <div className="bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <ChartBarIcon className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium">Attendance</p>
+              <p className="text-xl md:text-2xl font-bold">
+                {attendance.percentage || "0"}%
+              </p>
+              {attendance.present && attendance.total && (
+                <p className="text-xs opacity-90">
+                  {attendance.present}/{attendance.total} days
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Results Card */}
+        <div className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-xl shadow-lg p-4 md:p-6 text-white">
+          <div className="flex items-center">
+            <div className="bg-white bg-opacity-20 p-3 rounded-lg">
+              <TableCellsIcon className="h-6 w-6" />
+            </div>
+            <div className="ml-4">
+              <p className="text-sm font-medium">Average Grade</p>
+              <p className="text-xl md:text-2xl font-bold">
+                {results.averageGrade || "N/A"}%
+              </p>
+              <p className="text-xs opacity-90">
+                {results.semester
+                  ? `Semester ${results.semester}`
+                  : "View report card"}
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Courses and Assignments */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* My Courses */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-medium text-gray-900">My Courses</h2>
+              <span className="text-sm text-gray-500">
+                {courses.length} courses
+              </span>
+            </div>
+            <div className="p-4 md:p-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {courses.length > 0 ? (
+                  courses.map((course) => (
+                    <div
+                      key={course.id}
+                      className="border rounded-xl p-4 hover:shadow-md transition-shadow bg-gradient-to-br from-white to-gray-50"
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <div>
+                          <h3 className="font-medium text-gray-900">
+                            {course.name}
+                          </h3>
+                          <p className="text-sm text-gray-600">{course.code}</p>
+                        </div>
+                        <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded-full">
+                          {course.teacher || "Instructor"}
+                        </span>
+                      </div>
+                      <div className="mb-2">
+                        <div className="flex justify-between text-sm mb-1">
+                          <span>Progress</span>
+                          <span>{course.progress || 0}%</span>
+                        </div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${course.progress || 0}%` }}
+                          ></div>
+                        </div>
+                      </div>
+                      <div className="flex justify-between text-xs text-gray-500 mt-2">
+                        <span>Credits: {course.credits || 3}</span>
+                        <span>Room: {course.room || "TBA"}</span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-span-2 text-center py-8">
+                    <BookOpenIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-gray-500">No courses found</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Upcoming Assignments */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-medium text-gray-900">
+                Upcoming Assignments
+              </h2>
+              <span className="text-sm text-gray-500">
+                {upcomingAssignments.length} assignments
+              </span>
+            </div>
+            <div className="p-4 md:p-6">
+              {upcomingAssignments.length > 0 ? (
+                <div className="space-y-4">
+                  {upcomingAssignments.map((assignment) => (
+                    <div
+                      key={assignment.id}
+                      className="flex items-center justify-between p-3 md:p-4 border rounded-xl bg-gradient-to-br from-white to-gray-50 hover:shadow-sm transition-shadow"
+                    >
+                      <div className="flex items-center space-x-3">
+                        <div
+                          className={`p-2 rounded-lg ${
+                            assignment.status === "completed"
+                              ? "bg-green-100"
+                              : "bg-yellow-100"
+                          }`}
+                        >
+                          {assignment.status === "completed" ? (
+                            <CheckCircleIcon className="h-5 w-5 text-green-600" />
+                          ) : (
+                            <ClockIcon className="h-5 w-5 text-yellow-600" />
+                          )}
+                        </div>
+                        <div>
+                          <h4 className="font-medium text-gray-900">
+                            {assignment.title}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {assignment.course}
+                          </p>
+                          {assignment.dueDate && (
+                            <p className="text-xs text-gray-500">
+                              Due:{" "}
+                              {new Date(
+                                assignment.dueDate.seconds * 1000
+                              ).toLocaleDateString()}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span
+                          className={`text-sm font-medium ${
+                            assignment.status === "completed"
+                              ? "text-green-600"
+                              : "text-yellow-600"
+                          }`}
+                        >
+                          {assignment.status === "completed"
+                            ? "Completed"
+                            : assignment.dueDate
+                            ? `Due: ${new Date(
+                                assignment.dueDate.seconds * 1000
+                              ).toLocaleDateString()}`
+                            : "Pending"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <DocumentTextIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">No assignments found</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Timetable Section */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-medium text-gray-900">
+                Weekly Timetable - {studentData.class}
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              {timetable.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Day
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Time
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Subject
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                          Room
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {timetable.map((item, index) => (
+                        <tr key={index}>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {item.day}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.time}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.subject}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {item.room}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <TableCellsIcon className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500">
+                    No timetable available for {studentData.class}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column - Notifications and Profile */}
+        <div className="space-y-6">
+          {/* Student Profile Card */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white">
+              <div className="flex items-center space-x-3">
+                <div className="h-16 w-16 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
+                  <UserCircleIcon className="h-10 w-10 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">{studentData.name}</h2>
+                  <p className="text-sm opacity-90">
+                    {studentData.rollNumber || "N/A"} •{" "}
+                    {studentData.class || "N/A"}
+                    {studentData.section ? `-${studentData.section}` : ""}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center">
+                  <AcademicCapSolid className="h-4 w-4 text-gray-500 mr-2" />
+                  <div>
+                    <p className="text-gray-500">Class</p>
+                    <p className="font-medium">{studentData.class || "N/A"}</p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <UserGroupIcon className="h-4 w-4 text-gray-500 mr-2" />
+                  <div>
+                    <p className="text-gray-500">Section</p>
+                    <p className="font-medium">
+                      {studentData.section || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <CalendarIcon className="h-4 w-4 text-gray-500 mr-2" />
+                  <div>
+                    <p className="text-gray-500">Academic Year</p>
+                    <p className="font-medium">
+                      {studentData.academicYear || "N/A"}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <BookOpenIcon className="h-4 w-4 text-gray-500 mr-2" />
+                  <div>
+                    <p className="text-gray-500">Courses</p>
+                    <p className="font-medium">{courses.length}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Additional student details */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  Contact Information
+                </h3>
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <span className="text-gray-500">Email:</span>{" "}
+                    {studentData.email || "N/A"}
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Phone:</span>{" "}
+                    {studentData.phone || "N/A"}
+                  </p>
+                  <p>
+                    <span className="text-gray-500">Address:</span>{" "}
+                    {studentData.address || "N/A"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Notifications */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-lg font-medium text-gray-900">
+                Notifications
+              </h2>
+              {notifications.some((n) => !n.read) && (
+                <button
+                  onClick={markAllAsRead}
+                  className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Mark all as read
+                </button>
+              )}
+            </div>
+            <div className="p-4 md:p-6">
+              {notifications.length > 0 ? (
+                <div className="space-y-3">
+                  {notifications.slice(0, 5).map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-3 rounded-lg ${
+                        notification.read
+                          ? "bg-gray-50"
+                          : "bg-blue-50 border border-blue-200"
+                      }`}
+                    >
+                      <div className="flex justify-between items-start">
+                        <p
+                          className={`text-sm ${
+                            notification.read
+                              ? "text-gray-600"
+                              : "text-blue-800 font-medium"
+                          }`}
+                        >
+                          {notification.message}
+                        </p>
+                        {!notification.read && (
+                          <button
+                            onClick={() => markAsRead(notification.id)}
+                            className="text-blue-600 hover:text-blue-800 text-xs"
+                          >
+                            Mark read
+                          </button>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">
+                        {notification.timestamp?.seconds
+                          ? new Date(
+                              notification.timestamp.seconds * 1000
+                            ).toLocaleDateString()
+                          : "Recent"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <BellIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No notifications</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Attendance Summary */}
+          <div className="bg-white rounded-xl shadow-md overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">
+                Attendance Summary
+              </h2>
+            </div>
+            <div className="p-4 md:p-6">
+              {attendance.percentage !== undefined ? (
+                <div>
+                  <div className="flex justify-between items-center mb-4">
+                    <span className="text-sm font-medium text-gray-700">
+                      Overall Attendance
+                    </span>
+                    <span className="text-lg font-bold text-blue-600">
+                      {attendance.percentage}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2.5 mb-4">
+                    <div
+                      className="bg-blue-600 h-2.5 rounded-full"
+                      style={{ width: `${attendance.percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div className="text-center p-3 bg-green-50 rounded-lg">
+                      <p className="text-green-800 font-bold">
+                        {attendance.present || 0}
+                      </p>
+                      <p className="text-gray-600">Present</p>
+                    </div>
+                    <div className="text-center p-3 bg-red-50 rounded-lg">
+                      <p className="text-red-800 font-bold">
+                        {attendance.absent || 0}
+                      </p>
+                      <p className="text-gray-600">Absent</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-4">
+                  <ChartBarIcon className="h-8 w-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-gray-500">No attendance data available</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
-}
+};
+
+export default StudentDashboard;
