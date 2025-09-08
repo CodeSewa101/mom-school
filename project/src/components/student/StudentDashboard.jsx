@@ -14,10 +14,12 @@ import {
   UserGroupIcon,
   AcademicCapIcon as AcademicCapSolid,
 } from "@heroicons/react/24/outline";
-import { collection, getDocs, query, where } from "firebase/firestore";
+import { collection, getDocs, query, where, orderBy, limit } from "firebase/firestore";
 import { db } from "../../config/firebase";
+import { useAuth } from "../../contexts/AuthContext";
 
 const StudentDashboard = () => {
+  const { userData, currentUser } = useAuth();
   const [studentData, setStudentData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -29,104 +31,199 @@ const StudentDashboard = () => {
   const [attendance, setAttendance] = useState({});
 
   useEffect(() => {
-    // Mock data instead of fetching from Firebase
-    const mockStudentData = {
-      id: "student-001",
-      name: "Student Name",
-      rollNumber: "STU2024001",
-      class: "Class 10", // Changed to match timetable format
-      section: "A",
-      email: "student@example.com",
-      academicYear: "2024-2025",
-    };
+    if (userData && currentUser) {
+      // Use the actual student data from authentication
+      const actualStudentData = {
+        id: currentUser.uid,
+        name: userData.name,
+        rollNumber: userData.rollNumber,
+        class: userData.class,
+        section: userData.section,
+        email: userData.email,
+        academicYear: userData.academicYear,
+        phone: userData.phone,
+        address: userData.address,
+        birthDate: userData.birthDate,
+        parentName: userData.parentName,
+        parentPhone: userData.parentPhone,
+        photo: userData.photo,
+      };
 
-    const mockNotifications = [
-      {
-        id: "notif-1",
-        message: "Your assignment has been graded",
-        read: false,
-        timestamp: { seconds: Date.now() / 1000 - 86400 }, // 1 day ago
-      },
-      {
-        id: "notif-2",
-        message: "New notice from school administration",
-        read: false,
-        timestamp: { seconds: Date.now() / 1000 - 172800 }, // 2 days ago
-      },
-    ];
+      setStudentData(actualStudentData);
+      
+      // Fetch additional student data from Firebase
+      fetchStudentData(actualStudentData);
+    }
+  }, [userData, currentUser]);
 
-    const mockCourses = [
-      {
-        id: "course-1",
-        name: "Mathematics",
-        code: "MATH101",
-        teacher: "Dr. Smith",
-        progress: 75,
-        credits: 4,
-        room: "Room 301",
-      },
-      {
-        id: "course-2",
-        name: "Science",
-        code: "SCI201",
-        teacher: "Prof. Johnson",
-        progress: 60,
-        credits: 3,
-        room: "Lab B",
-      },
-    ];
+  const fetchStudentData = async (student) => {
+    try {
+      // Fetch student-specific data from Firebase
+      const [
+        notificationsSnapshot, 
+        coursesSnapshot, 
+        assignmentsSnapshot, 
+        feeSnapshot, 
+        resultsSnapshot, 
+        attendanceSnapshot
+      ] = await Promise.allSettled([
+        getDocs(query(collection(db, "notifications"), where("studentId", "==", student.id))),
+        getDocs(query(collection(db, "studentCourses"), where("studentId", "==", student.id))),
+        getDocs(query(collection(db, "assignments"), where("studentId", "==", student.id), where("status", "in", ["pending", "due"]))),
+        getDocs(query(collection(db, "feePayments"), where("studentId", "==", student.id), orderBy("dueDate", "desc"), limit(1))),
+        getDocs(query(collection(db, "results"), where("studentId", "==", student.id), orderBy("semester", "desc"), limit(1))),
+        getDocs(query(collection(db, "attendance"), where("studentId", "==", student.id), orderBy("date", "desc"), limit(1))),
+      ]);
 
-    const mockAssignments = [
-      {
-        id: "assign-1",
-        title: "Algebra Homework",
-        course: "Mathematics",
-        status: "pending",
-        dueDate: { seconds: Date.now() / 1000 + 86400 * 2 }, // 2 days from now
-      },
-      {
-        id: "assign-2",
-        title: "Science Project",
-        course: "Science",
-        status: "completed",
-        dueDate: { seconds: Date.now() / 1000 - 86400 }, // 1 day ago
-      },
-    ];
+      // Process notifications
+      if (notificationsSnapshot.status === 'fulfilled' && !notificationsSnapshot.value.empty) {
+        const notificationsData = notificationsSnapshot.value.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setNotifications(notificationsData);
+      } else {
+        setNotifications(getMockNotifications());
+      }
 
-    const mockFeeStatus = {
-      status: "paid",
-      amount: 500,
-      dueDate: { seconds: Date.now() / 1000 + 86400 * 30 }, // 30 days from now
-    };
+      // Process courses
+      if (coursesSnapshot.status === 'fulfilled' && !coursesSnapshot.value.empty) {
+        const coursesData = coursesSnapshot.value.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setCourses(coursesData);
+      } else {
+        setCourses(getMockCourses());
+      }
 
-    const mockResults = {
-      averageGrade: "85.5",
-      semester: "1",
-    };
+      // Process assignments
+      if (assignmentsSnapshot.status === 'fulfilled' && !assignmentsSnapshot.value.empty) {
+        const assignmentsData = assignmentsSnapshot.value.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setUpcomingAssignments(assignmentsData);
+      } else {
+        setUpcomingAssignments(getMockAssignments());
+      }
 
-    const mockAttendance = {
-      percentage: 92,
-      present: 46,
-      total: 50,
-      absent: 4,
-    };
+      // Process fee status
+      if (feeSnapshot.status === 'fulfilled' && !feeSnapshot.value.empty) {
+        setFeeStatus(feeSnapshot.value.docs[0].data());
+      } else {
+        setFeeStatus(getMockFeeStatus());
+      }
 
-    // Set all mock data
-    setStudentData(mockStudentData);
-    setNotifications(mockNotifications);
-    setCourses(mockCourses);
-    setUpcomingAssignments(mockAssignments);
-    setFeeStatus(mockFeeStatus);
-    setResults(mockResults);
-    setAttendance(mockAttendance);
+      // Process results
+      if (resultsSnapshot.status === 'fulfilled' && !resultsSnapshot.value.empty) {
+        setResults(resultsSnapshot.value.docs[0].data());
+      } else {
+        setResults(getMockResults());
+      }
 
-    // Fetch timetable data for the student's class
-    fetchTimetableForClass(mockStudentData.class);
-  }, []);
+      // Process attendance
+      if (attendanceSnapshot.status === 'fulfilled' && !attendanceSnapshot.value.empty) {
+        setAttendance(attendanceSnapshot.value.docs[0].data());
+      } else {
+        setAttendance(getMockAttendance());
+      }
+
+      // Fetch timetable for the student's class
+      fetchTimetableForClass(student.class);
+
+    } catch (error) {
+      console.error("Error fetching student data:", error);
+      // Fallback to mock data if Firebase data is not available
+      setMockData();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Mock data functions
+  const getMockNotifications = () => [
+    {
+      id: "notif-1",
+      message: "Your assignment has been graded",
+      read: false,
+      timestamp: { seconds: Date.now() / 1000 - 86400 },
+    },
+    {
+      id: "notif-2",
+      message: "New notice from school administration",
+      read: false,
+      timestamp: { seconds: Date.now() / 1000 - 172800 },
+    },
+  ];
+
+  const getMockCourses = () => [
+    {
+      id: "course-1",
+      name: "Mathematics",
+      code: "MATH101",
+      teacher: "Dr. Smith",
+      progress: 75,
+      credits: 4,
+      room: "Room 301",
+    },
+    {
+      id: "course-2",
+      name: "Science",
+      code: "SCI201",
+      teacher: "Prof. Johnson",
+      progress: 60,
+      credits: 3,
+      room: "Lab B",
+    },
+  ];
+
+  const getMockAssignments = () => [
+    {
+      id: "assign-1",
+      title: "Algebra Homework",
+      course: "Mathematics",
+      status: "pending",
+      dueDate: { seconds: Date.now() / 1000 + 86400 * 2 },
+    },
+    {
+      id: "assign-2",
+      title: "Science Project",
+      course: "Science",
+      status: "completed",
+      dueDate: { seconds: Date.now() / 1000 - 86400 },
+    },
+  ];
+
+  const getMockFeeStatus = () => ({
+    status: "paid",
+    amount: 500,
+    dueDate: { seconds: Date.now() / 1000 + 86400 * 30 },
+  });
+
+  const getMockResults = () => ({
+    averageGrade: "85.5",
+    semester: "1",
+  });
+
+  const getMockAttendance = () => ({
+    percentage: 92,
+    present: 46,
+    total: 50,
+    absent: 4,
+  });
+
+  const setMockData = () => {
+    setNotifications(getMockNotifications());
+    setCourses(getMockCourses());
+    setUpcomingAssignments(getMockAssignments());
+    setFeeStatus(getMockFeeStatus());
+    setResults(getMockResults());
+    setAttendance(getMockAttendance());
+  };
 
   const fetchTimetableForClass = async (className) => {
     try {
-      // Query the timetables collection for the student's class
       const q = query(
         collection(db, "timetables"),
         where("__name__", "==", className)
@@ -145,7 +242,6 @@ const StudentDashboard = () => {
           "Saturday",
         ];
 
-        // Transform the timetable data into a format suitable for display
         const formattedTimetable = [];
 
         days.forEach((day) => {
@@ -174,8 +270,6 @@ const StudentDashboard = () => {
     } catch (error) {
       console.error("Error fetching timetable:", error);
       setTimetable([]);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -527,7 +621,15 @@ const StudentDashboard = () => {
             <div className="bg-gradient-to-r from-blue-500 to-indigo-600 p-4 text-white">
               <div className="flex items-center space-x-3">
                 <div className="h-16 w-16 rounded-full bg-white bg-opacity-20 flex items-center justify-center">
-                  <UserCircleIcon className="h-10 w-10 text-white" />
+                  {studentData.photo ? (
+                    <img
+                      src={studentData.photo}
+                      alt={studentData.name}
+                      className="h-10 w-10 rounded-full object-cover"
+                    />
+                  ) : (
+                    <UserCircleIcon className="h-10 w-10 text-white" />
+                  )}
                 </div>
                 <div>
                   <h2 className="text-lg font-bold">{studentData.name}</h2>
