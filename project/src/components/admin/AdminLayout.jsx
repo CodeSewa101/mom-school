@@ -382,20 +382,20 @@ const getAdminMenuItems = () => [
     textColor: "text-purple-700",
   },
 
-  { 
-    name: "Attendance", 
-    path: "/admin/attendance", 
-    icon: Clock, 
+  {
+    name: "Attendance",
+    path: "/admin/attendance",
+    icon: Clock,
     color: "from-rose-500 to-rose-600",
     hoverColor: "hover:from-rose-600 hover:to-rose-700",
     iconColor: "text-rose-100",
     bgColor: "bg-rose-50",
     textColor: "text-rose-700",
   },
-  { 
-    name: "Exams & Results", 
-    path: "/admin/results", 
-    icon: Award, 
+  {
+    name: "Exams & Results",
+    path: "/admin/results",
+    icon: Award,
     color: "from-indigo-500 to-indigo-600",
     hoverColor: "hover:from-indigo-600 hover:to-indigo-700",
     iconColor: "text-indigo-100",
@@ -406,6 +406,16 @@ const getAdminMenuItems = () => [
     name: "Fee Management",
     path: "/admin/fees",
     icon: DollarSign,
+    color: "from-emerald-500 to-emerald-600",
+    hoverColor: "hover:from-emerald-600 hover:to-emerald-700",
+    iconColor: "text-emerald-100",
+    bgColor: "bg-emerald-50",
+    textColor: "text-emerald-700",
+  },
+  {
+    name: "Student Fees", // NEW MENU ITEM
+    path: "/admin/student-fees",
+    icon: DollarSign, // You might want a different icon to distinguish it
     color: "from-emerald-500 to-emerald-600",
     hoverColor: "hover:from-emerald-600 hover:to-emerald-700",
     iconColor: "text-emerald-100",

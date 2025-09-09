@@ -22,6 +22,19 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { format, parseISO, subDays, addDays, isSameDay } from "date-fns";
+import {
+  collection,
+  doc,
+  getDocs,
+  setDoc,
+  updateDoc,
+  deleteDoc,
+  query,
+  where,
+  orderBy,
+  onSnapshot,
+} from "firebase/firestore";
+import { db } from "../config/firebase";
 
 const AttendancePage = () => {
   const [students, setStudents] = useState([]);
@@ -70,67 +83,93 @@ const AttendancePage = () => {
   ];
   const sections = ["A", "B", "C", "D"];
 
-  useEffect(() => {
-    const fetchStudents = async () => {
-      try {
-        setIsLoading(true);
+  // Fetch students from Firestore
+  const fetchStudents = async () => {
+    try {
+      setIsLoading(true);
 
-        // Try to load from localStorage first
-        const savedStudents = localStorage.getItem(
-          `students-${selectedClass}-${selectedSection}`
-        );
-        const savedAttendance = localStorage.getItem(
-          `attendance-${selectedClass}-${selectedSection}`
-        );
-
-        if (savedStudents) {
-          setStudents(JSON.parse(savedStudents));
-          setFilteredStudents(JSON.parse(savedStudents));
-        } else {
-          // Mock data for demonstration if no saved data
-          const mockStudents =
-            selectedClass && selectedSection
-              ? Array.from({ length: 15 }, (_, i) => ({
-                  id: `${selectedClass}-${selectedSection}-${i + 1}`,
-                  name: `Student ${i + 1}`,
-                  rollNo: `${selectedClass}${selectedSection}${String(
-                    i + 1
-                  ).padStart(2, "0")}`,
-                  class: selectedClass,
-                  section: selectedSection,
-                  contact: `+1 (555) ${Math.floor(
-                    100 + Math.random() * 900
-                  )}-${Math.floor(1000 + Math.random() * 9000)}`,
-                  lastAttendance: format(
-                    new Date(
-                      Date.now() -
-                        Math.floor(Math.random() * 30) * 24 * 60 * 60 * 1000
-                    ),
-                    "yyyy-MM-dd"
-                  ),
-                  attendanceRate: Math.floor(70 + Math.random() * 30),
-                }))
-              : [];
-
-          setStudents(mockStudents);
-          setFilteredStudents(mockStudents);
-        }
-
-        if (savedAttendance) {
-          setAttendanceRecords(JSON.parse(savedAttendance));
-        } else {
-          setAttendanceRecords([]);
-        }
-      } catch (error) {
-        console.error("Error fetching data:", error);
-      } finally {
+      if (!selectedClass || !selectedSection) {
+        setStudents([]);
+        setFilteredStudents([]);
         setIsLoading(false);
+        return;
       }
-    };
 
-    if (selectedClass && selectedSection) {
-      fetchStudents();
+      const studentsQuery = query(
+        collection(db, "students"),
+        where("class", "==", selectedClass),
+        where("section", "==", selectedSection),
+        orderBy("rollNo")
+      );
+
+      const querySnapshot = await getDocs(studentsQuery);
+      const studentsData = [];
+
+      querySnapshot.forEach((doc) => {
+        studentsData.push({ id: doc.id, ...doc.data() });
+      });
+
+      setStudents(studentsData);
+      setFilteredStudents(studentsData);
+
+      // Also fetch attendance records for the selected date
+      fetchAttendanceRecords();
+    } catch (error) {
+      console.error("Error fetching students:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  // Fetch attendance records from Firestore
+  const fetchAttendanceRecords = async () => {
+    try {
+      if (!selectedClass || !selectedSection) return;
+
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("class", "==", selectedClass),
+        where("section", "==", selectedSection),
+        where("date", "==", selectedDate)
+      );
+
+      const querySnapshot = await getDocs(attendanceQuery);
+      const attendanceData = [];
+
+      querySnapshot.forEach((doc) => {
+        attendanceData.push({ id: doc.id, ...doc.data() });
+      });
+
+      setAttendanceRecords(attendanceData);
+    } catch (error) {
+      console.error("Error fetching attendance:", error);
+    }
+  };
+
+  // Real-time listener for attendance changes
+  useEffect(() => {
+    if (!selectedClass || !selectedSection) return;
+
+    const attendanceQuery = query(
+      collection(db, "attendance"),
+      where("class", "==", selectedClass),
+      where("section", "==", selectedSection),
+      where("date", "==", selectedDate)
+    );
+
+    const unsubscribe = onSnapshot(attendanceQuery, (querySnapshot) => {
+      const attendanceData = [];
+      querySnapshot.forEach((doc) => {
+        attendanceData.push({ id: doc.id, ...doc.data() });
+      });
+      setAttendanceRecords(attendanceData);
+    });
+
+    return () => unsubscribe();
+  }, [selectedClass, selectedSection, selectedDate]);
+
+  useEffect(() => {
+    fetchStudents();
   }, [selectedClass, selectedSection]);
 
   useEffect(() => {
@@ -151,49 +190,57 @@ const AttendancePage = () => {
     setFilteredStudents(filtered);
   };
 
-  const handleNameChange = (studentId, newName) => {
-    const updatedStudents = students.map((student) =>
-      student.id === studentId ? { ...student, name: newName } : student
-    );
-    setStudents(updatedStudents);
-    setFilteredStudents(updatedStudents);
-  };
+  const handleAttendanceChange = async (studentId, status) => {
+    try {
+      const attendanceId = `${studentId}-${selectedDate}`;
+      const attendanceRef = doc(db, "attendance", attendanceId);
 
-  const saveStudents = () => {
-    localStorage.setItem(
-      `students-${selectedClass}-${selectedSection}`,
-      JSON.stringify(students)
-    );
-    alert("Student names saved successfully!");
-  };
-
-  const handleAttendanceChange = (studentId, status) => {
-    const existingRecordIndex = attendanceRecords.findIndex(
-      (record) => record.studentId === studentId && record.date === selectedDate
-    );
-
-    let updatedRecords;
-    if (existingRecordIndex >= 0) {
-      updatedRecords = [...attendanceRecords];
-      updatedRecords[existingRecordIndex].status = status;
-      updatedRecords[existingRecordIndex].timestamp = new Date().toISOString();
-    } else {
-      updatedRecords = [
-        ...attendanceRecords,
+      // Always save the attendance record, even if status is empty
+      await setDoc(
+        attendanceRef,
         {
           studentId,
           date: selectedDate,
           status,
+          class: selectedClass,
+          section: selectedSection,
           timestamp: new Date().toISOString(),
         },
-      ];
-    }
+        { merge: true }
+      );
 
-    setAttendanceRecords(updatedRecords);
-    localStorage.setItem(
-      `attendance-${selectedClass}-${selectedSection}`,
-      JSON.stringify(updatedRecords)
-    );
+      // Update the local state
+      const existingRecordIndex = attendanceRecords.findIndex(
+        (record) =>
+          record.studentId === studentId && record.date === selectedDate
+      );
+
+      let updatedRecords;
+      if (existingRecordIndex >= 0) {
+        updatedRecords = [...attendanceRecords];
+        updatedRecords[existingRecordIndex].status = status;
+        updatedRecords[existingRecordIndex].timestamp =
+          new Date().toISOString();
+      } else {
+        updatedRecords = [
+          ...attendanceRecords,
+          {
+            id: attendanceId, // Make sure to include the id
+            studentId,
+            date: selectedDate,
+            status,
+            timestamp: new Date().toISOString(),
+            class: selectedClass,
+            section: selectedSection,
+          },
+        ];
+      }
+
+      setAttendanceRecords(updatedRecords);
+    } catch (error) {
+      console.error("Error updating attendance:", error);
+      alert("Failed to update attendance");
+    }
   };
 
   const getAttendanceStatus = (studentId, date = selectedDate) => {
@@ -206,7 +253,8 @@ const AttendancePage = () => {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // In a real app, you might want to mark the attendance as submitted
+      // or perform additional validation here
       alert(
         `Attendance submitted for Class ${selectedClass} Section ${selectedSection} on ${format(
           parseISO(selectedDate),
@@ -221,53 +269,56 @@ const AttendancePage = () => {
     }
   };
 
-  const addNewStudent = () => {
+  const addNewStudent = async () => {
     if (!newStudentName.trim()) return;
 
-    // Find the highest numeric part in existing roll numbers
-    const rollNoPattern = new RegExp(
-      `${selectedClass}${selectedSection}(\\d+)`
-    );
-    let maxRollNo = 0;
+    try {
+      // Find the highest numeric part in existing roll numbers
+      const rollNoPattern = new RegExp(
+        `${selectedClass}${selectedSection}(\\d+)`
+      );
+      let maxRollNo = 0;
 
-    students.forEach((student) => {
-      const match = student.rollNo.match(rollNoPattern);
-      if (match && match[1]) {
-        const num = parseInt(match[1], 10);
-        if (num > maxRollNo) {
-          maxRollNo = num;
+      students.forEach((student) => {
+        const match = student.rollNo.match(rollNoPattern);
+        if (match && match[1]) {
+          const num = parseInt(match[1], 10);
+          if (num > maxRollNo) {
+            maxRollNo = num;
+          }
         }
-      }
-    });
+      });
 
-    const newRollNoNum = maxRollNo + 1;
-    const newRollNo = `${selectedClass}${selectedSection}${String(
-      newRollNoNum
-    ).padStart(2, "0")}`;
-    const newId = `${selectedClass}-${selectedSection}-${newRollNoNum}`;
+      const newRollNoNum = maxRollNo + 1;
+      const newRollNo = `${selectedClass}${selectedSection}${String(
+        newRollNoNum
+      ).padStart(2, "0")}`;
+      const newId = `${selectedClass}-${selectedSection}-${newRollNoNum}`;
 
-    const newStudent = {
-      id: newId,
-      name: newStudentName.trim(),
-      rollNo: newRollNo,
-      class: selectedClass,
-      section: selectedSection,
-      contact: "",
-      lastAttendance: "",
-      attendanceRate: 0,
-    };
+      const newStudent = {
+        name: newStudentName.trim(),
+        rollNo: newRollNo,
+        class: selectedClass,
+        section: selectedSection,
+        contact: "",
+        lastAttendance: "",
+        attendanceRate: 0,
+      };
 
-    const updatedStudents = [...students, newStudent];
-    setStudents(updatedStudents);
-    setFilteredStudents(updatedStudents);
-    setNewStudentName("");
-    setIsAddingStudent(false);
+      // Add to Firestore
+      const studentRef = doc(db, "students", newId);
+      await setDoc(studentRef, newStudent);
 
-    // Save to localStorage
-    localStorage.setItem(
-      `students-${selectedClass}-${selectedSection}`,
-      JSON.stringify(updatedStudents)
-    );
+      // Update local state
+      const updatedStudents = [...students, { id: newId, ...newStudent }];
+      setStudents(updatedStudents);
+      setFilteredStudents(updatedStudents);
+      setNewStudentName("");
+      setIsAddingStudent(false);
+    } catch (error) {
+      console.error("Error adding student:", error);
+      alert("Failed to add student");
+    }
   };
 
   const handleEditStudent = (student) => {
@@ -287,25 +338,34 @@ const AttendancePage = () => {
     });
   };
 
-  const saveEditedStudent = () => {
-    const updatedStudents = students.map((student) =>
-      student.id === editingStudent
-        ? {
-            ...student,
-            name: editFormData.name,
-            rollNo: editFormData.rollNo,
-            contact: editFormData.contact,
-          }
-        : student
-    );
+  const saveEditedStudent = async () => {
+    try {
+      const studentRef = doc(db, "students", editingStudent);
+      await updateDoc(studentRef, {
+        name: editFormData.name,
+        rollNo: editFormData.rollNo,
+        contact: editFormData.contact,
+      });
 
-    setStudents(updatedStudents);
-    setFilteredStudents(updatedStudents);
-    setEditingStudent(null);
-    localStorage.setItem(
-      `students-${selectedClass}-${selectedSection}`,
-      JSON.stringify(updatedStudents)
-    );
+      // Update local state
+      const updatedStudents = students.map((student) =>
+        student.id === editingStudent
+          ? {
+              ...student,
+              name: editFormData.name,
+              rollNo: editFormData.rollNo,
+              contact: editFormData.contact,
+            }
+          : student
+      );
+
+      setStudents(updatedStudents);
+      setFilteredStudents(updatedStudents);
+      setEditingStudent(null);
+    } catch (error) {
+      console.error("Error updating student:", error);
+      alert("Failed to update student");
+    }
   };
 
   const cancelEdit = () => {
@@ -353,6 +413,32 @@ const AttendancePage = () => {
         return <XCircle className="h-4 w-4 text-red-500" />;
       default:
         return <span className="text-gray-300">—</span>;
+    }
+  };
+
+  // Fetch historical attendance for view mode
+  const fetchHistoricalAttendance = async (studentId, startDate, endDate) => {
+    try {
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("studentId", "==", studentId),
+        where("date", ">=", startDate),
+        where("date", "<=", endDate),
+        orderBy("date")
+      );
+
+      const querySnapshot = await getDocs(attendanceQuery);
+      const records = {};
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        records[data.date] = data.status;
+      });
+
+      return records;
+    } catch (error) {
+      console.error("Error fetching historical attendance:", error);
+      return {};
     }
   };
 
@@ -576,22 +662,13 @@ const AttendancePage = () => {
               </div>
               <div className="flex gap-2">
                 {viewMode === "mark" && (
-                  <>
-                    <button
-                      onClick={saveStudents}
-                      className="px-4 py-2 bg-indigo-50 text-indigo-700 rounded-lg hover:bg-indigo-100 flex items-center gap-2 transition-colors duration-200 border border-indigo-100"
-                    >
-                      <Save className="h-4 w-4" />
-                      <span>Save Names</span>
-                    </button>
-                    <button
-                      onClick={() => setIsAddingStudent(true)}
-                      className="px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-2 transition-colors duration-200 border border-green-100"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Add Student</span>
-                    </button>
-                  </>
+                  <button
+                    onClick={() => setIsAddingStudent(true)}
+                    className="px-4 py-2 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 flex items-center gap-2 transition-colors duration-200 border border-green-100"
+                  >
+                    <Plus className="h-4 w-4" />
+                    <span>Add Student</span>
+                  </button>
                 )}
               </div>
             </div>

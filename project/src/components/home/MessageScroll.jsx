@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { collection, getDocs, query, where, orderBy } from "firebase/firestore";
-import { db } from "../../config/firebase"; // Adjust path as needed
+import { db } from "../../config/firebase";
 import { Bell, X, Eye, Calendar, Download, Sparkles } from "lucide-react";
 
 const MessageScroll = () => {
@@ -10,7 +10,6 @@ const MessageScroll = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch notifications from Firebase
   useEffect(() => {
     const fetchActiveNotifications = async () => {
       try {
@@ -37,7 +36,6 @@ const MessageScroll = () => {
     fetchActiveNotifications();
   }, []);
 
-  // Auto-show notification after data loads
   useEffect(() => {
     if (!loading && notifications.length > 0) {
       const timer = setTimeout(() => {
@@ -47,7 +45,6 @@ const MessageScroll = () => {
     }
   }, [loading, notifications.length]);
 
-  // Auto-cycle through notifications
   useEffect(() => {
     if (isVisible && !showAll && notifications.length > 1) {
       const interval = setInterval(() => {
@@ -70,7 +67,6 @@ const MessageScroll = () => {
     setCurrentIndex(0);
   };
 
-  // Don't render if loading or no notifications
   if (loading || notifications.length === 0 || !isVisible) {
     return null;
   }
@@ -85,11 +81,9 @@ const MessageScroll = () => {
         }`}
       >
         <div className="bg-gradient-to-br from-white via-violet-50/50 to-rose-50/30 backdrop-blur-sm rounded-2xl sm:rounded-3xl shadow-2xl border border-violet-200/50 overflow-hidden relative">
-          {/* Decorative Elements */}
           <div className="absolute -top-2 -right-2 w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-violet-200/20 to-rose-200/20"></div>
           <div className="absolute -bottom-3 -left-3 w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-gradient-to-br from-emerald-200/20 to-cyan-200/20"></div>
 
-          {/* Header */}
           <div className="bg-gradient-to-r from-violet-600 via-rose-500 to-emerald-500 text-white px-3 sm:px-4 lg:px-5 py-2.5 sm:py-3 flex items-center justify-between relative overflow-hidden">
             <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiPjxyZWN0IHdpZHRoPSIxMCIgaGVpZ2h0PSIxMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjEpIi8+PC9wYXR0ZXJuPjwvZGVmcz48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3BhdHRlcm4pIi8+PC9zdmc+')] opacity-20"></div>
             <div className="flex items-center gap-1.5 sm:gap-2 relative z-10">
@@ -109,10 +103,8 @@ const MessageScroll = () => {
             </button>
           </div>
 
-          {/* Content */}
           <div className="p-3 sm:p-4 lg:p-5 relative z-10">
             {!showAll ? (
-              // Single notification rotation view
               <div className="space-y-2 sm:space-y-3">
                 <div
                   key={notifications[currentIndex].id}
@@ -160,7 +152,6 @@ const MessageScroll = () => {
                   </div>
                 </div>
 
-                {/* Progress indicator */}
                 {notifications.length > 1 && (
                   <div className="flex gap-1 justify-center mt-2 sm:mt-3">
                     {notifications.map((_, index) => (
@@ -191,7 +182,6 @@ const MessageScroll = () => {
                 )}
               </div>
             ) : (
-              // All notifications view
               <div className="space-y-2 sm:space-y-3 max-h-60 sm:max-h-80 lg:max-h-96 overflow-y-auto custom-scrollbar">
                 <div className="flex items-center justify-between mb-2 sm:mb-3 sticky top-0 bg-gradient-to-r from-white via-violet-50/50 to-rose-50/30 backdrop-blur-sm py-1 rounded-lg">
                   <h4 className="font-bold text-gray-800 text-xs sm:text-sm flex items-center gap-1.5">
@@ -271,62 +261,60 @@ const MessageScroll = () => {
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes fade-in {
-          from {
-            opacity: 0;
-            transform: translateY(10px) scale(0.98);
+      <style>
+        {`
+          @keyframes fade-in {
+            from {
+              opacity: 0;
+              transform: translateY(10px) scale(0.98);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0) scale(1);
+            }
           }
-          to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
+
+          .animate-fade-in {
+            animation: fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
           }
-        }
 
-        .animate-fade-in {
-          animation: fade-in 0.6s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+          .custom-scrollbar::-webkit-scrollbar {
+            width: 3px;
+          }
 
-        /* Custom scrollbar */
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 3px;
-        }
+          .custom-scrollbar::-webkit-scrollbar-track {
+            background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
+            border-radius: 10px;
+          }
 
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: linear-gradient(to bottom, #f3f4f6, #e5e7eb);
-          border-radius: 10px;
-        }
+          .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #8b5cf6, #ec4899);
+            border-radius: 10px;
+          }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: linear-gradient(to bottom, #8b5cf6, #ec4899);
-          border-radius: 10px;
-        }
+          .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #7c3aed, #db2777);
+          }
 
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: linear-gradient(to bottom, #7c3aed, #db2777);
-        }
-
-        /* Firefox */
-        .custom-scrollbar {
-          scrollbar-width: thin;
-          scrollbar-color: #8b5cf6 #f3f4f6;
-        }
-
-        /* Mobile touch improvements */
-        @media (max-width: 640px) {
           .custom-scrollbar {
-            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            scrollbar-color: #8b5cf6 #f3f4f6;
           }
-        }
 
-        /* Responsive animations */
-        @media (prefers-reduced-motion: reduce) {
-          .animate-fade-in,
-          .animate-pulse {
-            animation: none;
+          @media (max-width: 640px) {
+            .custom-scrollbar {
+              -webkit-overflow-scrolling: touch;
+            }
           }
-        }
-      `}</style>
+
+          @media (prefers-reduced-motion: reduce) {
+            .animate-fade-in,
+            .animate-pulse {
+              animation: none;
+            }
+          }
+        `}
+      </style>
     </div>
   );
 };

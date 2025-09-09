@@ -1,3 +1,4 @@
+// App.jsx
 import {
   BrowserRouter as Router,
   Routes,
@@ -28,14 +29,13 @@ import HomeworkPage from "./pages/HomeworkPage";
 import AttendancePage from "./pages/AttendancePage";
 import FeeManagement from "./pages/FeeManagement";
 import ResultsPage from "./pages/ResultsPage";
+import StudentFeeManager from "./components/admin/StudentFeeManager";
 
 // Import Student Components
 import StudentLayout from "./components/student/StudentLayout";
 import StudentDashboard from "./components/student/StudentDashboard";
-// import StudentTimetable from "./components/student/StudentTimetable";
-// import StudentHomework from "./components/student/StudentHomework";
-// import StudentAttendance from "./components/student/StudentAttendance";
-// import StudentResults from "./components/student/StudentResults";
+import ReportCardView from "./pages/ReportCardView";
+import StudentFeeView from "./components/student/StudentFeeView";
 
 function App() {
   return (
@@ -133,7 +133,8 @@ function App() {
               <Route path="homework" element={<HomeworkPage />} />
               <Route path="attendance" element={<AttendancePage />} />
               <Route path="fees" element={<FeeManagement />} />
-              <Route path="/admin/results" element={<ResultsPage />} />
+              <Route path="student-fees" element={<StudentFeeManager />} />
+              <Route path="results" element={<ResultsPage />} />
             </Route>
           </Route>
 
@@ -141,10 +142,8 @@ function App() {
           <Route element={<ProtectedRoute requiredRole="student" />}>
             <Route path="/student" element={<StudentLayout />}>
               <Route index element={<StudentDashboard />} />
-              {/* <Route path="timetable" element={<StudentTimetable />} />
-              <Route path="homework" element={<StudentHomework />} />
-              <Route path="attendance" element={<StudentAttendance />} />
-              <Route path="results" element={<StudentResults />} /> */}
+              <Route path="report-card" element={<ReportCardView />} />
+              <Route path="fees" element={<StudentFeeView />} />
             </Route>
           </Route>
 

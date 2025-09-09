@@ -24,7 +24,7 @@ export default function Header() {
   const [isAcademicDropdownOpen, setIsAcademicDropdownOpen] = useState(false);
   const [isMobileAcademicOpen, setIsMobileAcademicOpen] = useState(false);
   const [screenSize, setScreenSize] = useState("lg");
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, userRole } = useAuth(); // Assuming userRole is available from AuthContext
   const location = useLocation();
 
   // Screen size detection
@@ -186,6 +186,10 @@ export default function Header() {
     }
   };
 
+  // Determine if user is admin or student
+  const isAdmin = userRole === "admin";
+  const isStudent = userRole === "student";
+
   return (
     <header className="bg-white/90 backdrop-blur-sm sticky top-0 z-50 border-b border-gray-200/50 shadow-sm relative">
       <GlassBackground />
@@ -304,7 +308,7 @@ export default function Header() {
               </div>
             ))}
 
-            {/* Admin Section */}
+            {/* User Section */}
             {currentUser ? (
               <div className="relative ml-2 xl:ml-4">
                 <motion.button
@@ -317,7 +321,9 @@ export default function Header() {
                     <span className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center mr-2 text-blue-600">
                       👤
                     </span>
-                    <span className="hidden xl:inline">Admin</span>
+                    <span className="hidden xl:inline">
+                      {isAdmin ? "Admin" : "Student"}
+                    </span>
                     <AdminIcon isOpen={isAdminDropdownOpen} />
                   </span>
                 </motion.button>
@@ -337,24 +343,24 @@ export default function Header() {
                         <p className="text-sm font-medium text-gray-800 truncate">
                           {currentUser.email}
                         </p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          {isAdmin ? "Administrator" : "Student"}
+                        </p>
                       </div>
 
-                      <Link
-                        to="/admin"
-                        className="block px-4 py-3 text-gray-700 hover:bg-blue-50 transition-all flex items-center text-sm border-b border-gray-100"
-                        onClick={() => setIsAdminDropdownOpen(false)}
-                      >
-                        <span className="w-5 mr-3 text-blue-500">📊</span>
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/admin/settings"
-                        className="block px-4 py-3 text-gray-700 hover:bg-blue-50 transition-all flex items-center text-sm border-b border-gray-100"
-                        onClick={() => setIsAdminDropdownOpen(false)}
-                      >
-                        <span className="w-5 mr-3 text-blue-500">⚙️</span>
-                        Settings
-                      </Link>
+                      {isAdmin && (
+                        <>
+                          <Link
+                            to="/admin"
+                            className="block px-4 py-3 text-gray-700 hover:bg-blue-50 transition-all flex items-center text-sm border-b border-gray-100"
+                            onClick={() => setIsAdminDropdownOpen(false)}
+                          >
+                            <span className="w-5 mr-3 text-blue-500">📊</span>
+                            Admin Panel
+                          </Link>
+                        </>
+                      )}
+
                       <button
                         onClick={() => {
                           handleLogout();
@@ -445,7 +451,7 @@ export default function Header() {
                     key={item.name}
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
+                    exit={{ opacity: 0, y: 10 }}
                     transition={{
                       delay: index * 0.05,
                       duration: 0.2,
@@ -519,28 +525,22 @@ export default function Header() {
                   </motion.div>
                 ))}
 
-                {/* Mobile Admin Section */}
+                {/* Mobile User Section */}
                 {currentUser ? (
                   <div className="pt-2 mt-2 border-t border-gray-200/30">
                     <div className="px-4 py-2.5 text-xs text-gray-500 font-medium">
-                      Admin Panel
+                      {isAdmin ? "Admin Panel" : "Student Account"}
                     </div>
-                    <Link
-                      to="/admin"
-                      className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm flex items-center touch-manipulation"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <span className="w-5 mr-3 text-blue-500">📊</span>
-                      Dashboard
-                    </Link>
-                    <Link
-                      to="/admin/settings"
-                      className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm flex items-center touch-manipulation"
-                      onClick={() => setIsMenuOpen(false)}
-                    >
-                      <span className="w-5 mr-3 text-blue-500">⚙️</span>
-                      Settings
-                    </Link>
+                    {isAdmin && (
+                      <Link
+                        to="/admin"
+                        className="block px-4 py-2.5 rounded-md text-gray-700 hover:bg-blue-50 hover:text-blue-600 transition-all text-sm flex items-center touch-manipulation"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <span className="w-5 mr-3 text-blue-500">📊</span>
+                        Admin Dashboard
+                      </Link>
+                    )}
                     <button
                       onClick={() => {
                         handleLogout();

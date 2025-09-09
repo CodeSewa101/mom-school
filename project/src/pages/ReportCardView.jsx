@@ -1,5 +1,4 @@
-// ReportCardView.jsx
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { db } from "../config/firebase";
 import { collection, query, where, getDocs } from "firebase/firestore";
 
@@ -12,21 +11,22 @@ const ReportCardView = () => {
   });
   const [error, setError] = useState("");
 
-  // Class options for dropdown
+  // Class options for dropdown - matching StudentManagement format
   const classOptions = [
-    "Pre K",
-    "Pre K-1",
-    "Pre K-2",
-    "Class 1",
-    "Class 2",
-    "Class 3",
-    "Class 4",
-    "Class 5",
-    "Class 6",
-    "Class 7",
-    "Class 8",
-    "Class 9",
-    "Class 10",
+    "Pre-K",
+    "K",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
+    "10",
+    "11",
+    "12",
   ];
 
   const handleInputChange = (e) => {
@@ -46,17 +46,33 @@ const ReportCardView = () => {
     setLoading(true);
     setError("");
     try {
-      const q = query(
-        collection(db, "students"),
-        where("rollNo", "==", searchParams.rollNo),
-        where("class", "==", searchParams.class)
-      );
+      // Try both class formats: "7" and "Class 7"
+      const classFormats = [
+        searchParams.class.trim(),
+        `Class ${searchParams.class.trim()}`,
+      ];
 
-      const querySnapshot = await getDocs(q);
-      if (!querySnapshot.empty) {
-        querySnapshot.forEach((doc) => {
-          setStudent({ id: doc.id, ...doc.data() });
-        });
+      let studentFound = null;
+
+      // Try each class format until we find the student
+      for (const classFormat of classFormats) {
+        const q = query(
+          collection(db, "students"),
+          where("rollNo", "==", searchParams.rollNo.trim()),
+          where("class", "==", classFormat)
+        );
+
+        const querySnapshot = await getDocs(q);
+        if (!querySnapshot.empty) {
+          querySnapshot.forEach((doc) => {
+            studentFound = { id: doc.id, ...doc.data() };
+          });
+          break; // Exit loop if student found
+        }
+      }
+
+      if (studentFound) {
+        setStudent(studentFound);
       } else {
         setError("No student found with these details");
         setStudent(null);
@@ -77,6 +93,13 @@ const ReportCardView = () => {
     setStudent(null);
     setSearchParams({ rollNo: "", class: "" });
     setError("");
+  };
+
+  // Function to format class for display
+  const formatClassForDisplay = (cls) => {
+    if (cls === "Pre-K" || cls === "K") return cls;
+    if (cls.startsWith("Class ")) return cls; // Already formatted
+    return `Class ${cls}`;
   };
 
   if (student) {
@@ -127,7 +150,8 @@ const ReportCardView = () => {
                   {student.rollNo}
                 </p>
                 <p>
-                  <span className="font-semibold">Class:</span> {student.class}
+                  <span className="font-semibold">Class:</span>{" "}
+                  {formatClassForDisplay(student.class)}
                 </p>
               </div>
               <div className="text-right">
@@ -161,28 +185,45 @@ const ReportCardView = () => {
                     <th className="border border-gray-300 px-4 py-2">
                       Percentage
                     </th>
+                    <th className="border border-gray-300 px-4 py-2">Grade</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {student.subjects.map((subject, index) => (
-                    <tr
-                      key={index}
-                      className={index % 2 === 0 ? "bg-gray-50" : ""}
-                    >
-                      <td className="border border-gray-300 px-4 py-2 font-medium">
-                        {subject.name}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
-                        {subject.totalMarks}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
-                        {subject.obtainedMarks}
-                      </td>
-                      <td className="border border-gray-300 px-4 py-2 text-center">
-                        {subject.percentage}%
-                      </td>
-                    </tr>
-                  ))}
+                  {student.subjects &&
+                    student.subjects.map((subject, index) => {
+                      const percentage = parseFloat(subject.percentage);
+                      let grade = "";
+
+                      if (percentage >= 90) grade = "A+";
+                      else if (percentage >= 80) grade = "A";
+                      else if (percentage >= 70) grade = "B";
+                      else if (percentage >= 60) grade = "C";
+                      else if (percentage >= 50) grade = "D";
+                      else grade = "F";
+
+                      return (
+                        <tr
+                          key={index}
+                          className={index % 2 === 0 ? "bg-gray-50" : ""}
+                        >
+                          <td className="border border-gray-300 px-4 py-2 font-medium">
+                            {subject.name}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            {subject.totalMarks}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            {subject.obtainedMarks}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center">
+                            {subject.percentage}%
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center font-semibold">
+                            {grade}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
@@ -192,16 +233,25 @@ const ReportCardView = () => {
               <div>
                 <p className="font-semibold">Remarks:</p>
                 <div className="border border-gray-300 p-2 h-24">
-                  {parseFloat(student.percentage) >= 80 &&
-                    "Excellent performance! Keep up the good work."}
-                  {parseFloat(student.percentage) >= 60 &&
-                    parseFloat(student.percentage) < 80 &&
-                    "Good effort. There's room for improvement."}
-                  {parseFloat(student.percentage) >= 40 &&
-                    parseFloat(student.percentage) < 60 &&
-                    "Satisfactory performance. Need to work harder."}
-                  {parseFloat(student.percentage) < 40 &&
-                    "Needs significant improvement. Please focus on studies."}
+                  {student.percentage >= 90 &&
+                    "Outstanding performance! Exceptional work in all subjects."}
+                  {student.percentage >= 80 &&
+                    student.percentage < 90 &&
+                    "Excellent performance! Consistent effort across all subjects."}
+                  {student.percentage >= 70 &&
+                    student.percentage < 80 &&
+                    "Very good performance. Maintain this level of dedication."}
+                  {student.percentage >= 60 &&
+                    student.percentage < 70 &&
+                    "Good effort. Shows understanding of most concepts."}
+                  {student.percentage >= 50 &&
+                    student.percentage < 60 &&
+                    "Satisfactory performance. Room for improvement in some areas."}
+                  {student.percentage >= 40 &&
+                    student.percentage < 50 &&
+                    "Needs improvement. Please focus on weak subjects."}
+                  {student.percentage < 40 &&
+                    "Unsatisfactory performance. Requires immediate attention and remedial classes."}
                 </div>
               </div>
               <div className="bg-blue-50 p-4 rounded">
@@ -214,18 +264,18 @@ const ReportCardView = () => {
                     Percentage: {student.percentage}%
                   </p>
                   <p className="mt-2">
-                    Grade:{" "}
-                    {parseFloat(student.percentage) >= 80
-                      ? "A+"
-                      : parseFloat(student.percentage) >= 70
-                      ? "A"
-                      : parseFloat(student.percentage) >= 60
-                      ? "B"
-                      : parseFloat(student.percentage) >= 50
-                      ? "C"
-                      : parseFloat(student.percentage) >= 40
-                      ? "D"
-                      : "F"}
+                    Overall Grade:{" "}
+                    {student.percentage >= 90
+                      ? "A+ (Excellent)"
+                      : student.percentage >= 80
+                      ? "A (Very Good)"
+                      : student.percentage >= 70
+                      ? "B (Good)"
+                      : student.percentage >= 60
+                      ? "C (Average)"
+                      : student.percentage >= 50
+                      ? "D (Below Average)"
+                      : "F (Fail)"}
                   </p>
                 </div>
               </div>
@@ -263,6 +313,14 @@ const ReportCardView = () => {
               top: 0;
               width: 100%;
               max-width: 100%;
+              margin: 0;
+              padding: 0;
+            }
+            .bg-white {
+              background-color: white !important;
+            }
+            button {
+              display: none !important;
             }
           }
         `}</style>
@@ -305,7 +363,7 @@ const ReportCardView = () => {
             <option value="">Select Class</option>
             {classOptions.map((cls, index) => (
               <option key={index} value={cls}>
-                {cls}
+                {formatClassForDisplay(cls)}
               </option>
             ))}
           </select>
@@ -320,6 +378,14 @@ const ReportCardView = () => {
         >
           {loading ? "Loading..." : "View Report Card"}
         </button>
+
+        <div className="mt-4 p-3 bg-blue-50 rounded-md">
+          <p className="text-sm text-blue-700">
+            <strong>Note:</strong> Enter the exact Roll Number and Class as
+            registered in the system. For example: Roll Number "101" and Class
+            "7" (not "Class 7").
+          </p>
+        </div>
       </div>
     </div>
   );
