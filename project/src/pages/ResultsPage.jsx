@@ -15,7 +15,7 @@ const ResultPage = () => {
   const [studentData, setStudentData] = useState({
     name: "",
     rollNo: "",
-    class: "",
+    studentClass: "",
     subjects: [
       { name: "", totalMarks: "", obtainedMarks: "", percentage: "0.00" },
     ],
@@ -172,7 +172,7 @@ const ResultPage = () => {
       setStudentData({
         name: "",
         rollNo: "",
-        class: "",
+        studentClass: "",
         subjects: [
           { name: "", totalMarks: "", obtainedMarks: "", percentage: "0.00" },
         ],
@@ -190,7 +190,7 @@ const ResultPage = () => {
       setStudentData({
         name: student.name || "",
         rollNo: student.rollNo || "",
-        class: student.class || "",
+        studentClass: student.studentClass || "",
         subjects: student.subjects
           ? student.subjects.map((sub) => ({
               name: sub.name || "",
@@ -211,7 +211,7 @@ const ResultPage = () => {
     }
   };
 
-  // Delete a student record - FIXED VERSION
+  // Delete a student record
   const handleDelete = async (student) => {
     if (!student || !student.id) {
       console.error("Cannot delete student: Invalid student object or ID");
@@ -236,7 +236,9 @@ const ResultPage = () => {
   const filteredStudents =
     classFilter === "all"
       ? students.filter((student) => student && student.id)
-      : students.filter((student) => student && student.class === classFilter);
+      : students.filter(
+          (student) => student && student.studentClass === classFilter
+        );
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
@@ -288,8 +290,8 @@ const ResultPage = () => {
                 Class
               </label>
               <select
-                name="class"
-                value={studentData.class}
+                name="studentClass"
+                value={studentData.studentClass}
                 onChange={handleInputChange}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 required
@@ -457,7 +459,8 @@ const ResultPage = () => {
                         {student.name}
                       </h3>
                       <p className="text-gray-600">
-                        Roll No: {student.rollNo} | Class: {student.class}
+                        Roll No: {student.rollNo} | Class:{" "}
+                        {student.studentClass}
                       </p>
                     </div>
                     <div className="flex space-x-2">
