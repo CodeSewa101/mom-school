@@ -7,6 +7,9 @@ import {
   AcademicCapIcon as AcademicCapSolid,
   UserGroupIcon,
   CalendarIcon,
+  CakeIcon,
+  SparklesIcon,
+  ClockIcon,
 } from "@heroicons/react/24/outline";
 import {
   collection,
@@ -19,6 +22,7 @@ import {
 import { db } from "../../config/firebase";
 import { useAuth } from "../../contexts/AuthContext";
 import { Link } from "react-router-dom";
+import { format, isToday, isAfter, endOfDay } from "date-fns";
 
 const StudentDashboard = () => {
   const { userData, currentUser } = useAuth();
@@ -26,28 +30,72 @@ const StudentDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [feeStatus, setFeeStatus] = useState({});
   const [results, setResults] = useState({});
+  const [isBirthday, setIsBirthday] = useState(false);
+  const [timeRemaining, setTimeRemaining] = useState("");
 
   useEffect(() => {
     if (userData && currentUser) {
-      // Check the actual structure of userData by logging it
-      console.log("User Data:", userData);
-      
-      // Use the correct field names from your userData
-      // If rollNumber is not available, try rollNo (from your StudentManagement component)
       const actualStudentData = {
         id: currentUser.uid,
         name: userData.name,
-        rollNumber: userData.rollNumber || userData.rollNo || "N/A", // Try both possibilities
-        class: userData.class || userData.studentClass || "N/A", // Try both possibilities
+        rollNumber: userData.rollNumber || userData.rollNo || "N/A",
+        class: userData.class || userData.studentClass || "N/A",
         section: userData.section || "N/A",
         email: userData.email,
         academicYear: userData.academicYear || "N/A",
+        birthDate: userData.birthDate || null,
       };
 
       setStudentData(actualStudentData);
+      
+      // Check if today is the student's birthday and set up countdown
+      if (actualStudentData.birthDate) {
+        checkBirthday(actualStudentData.birthDate);
+      }
+      
       fetchStudentData(actualStudentData);
     }
   }, [userData, currentUser]);
+
+  const checkBirthday = (birthDateString) => {
+    const birthDate = new Date(birthDateString);
+    const today = new Date();
+    
+    // Check if today is the birthday
+    if (isToday(birthDate)) {
+      setIsBirthday(true);
+      
+      // Calculate time remaining until end of day
+      const endOfToday = endOfDay(today);
+      const updateCountdown = () => {
+        const now = new Date();
+        const diff = endOfToday - now;
+        
+        if (diff <= 0) {
+          setIsBirthday(false);
+          clearInterval(interval);
+          return;
+        }
+        
+        // Calculate hours and minutes remaining
+        const hours = Math.floor(diff / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+        
+        setTimeRemaining(`${hours}h ${minutes}m`);
+      };
+      
+      // Initial update
+      updateCountdown();
+      
+      // Update every minute
+      const interval = setInterval(updateCountdown, 60000);
+      
+      // Cleanup interval on component unmount
+      return () => clearInterval(interval);
+    } else {
+      setIsBirthday(false);
+    }
+  };
 
   const fetchStudentData = async (student) => {
     try {
@@ -110,6 +158,54 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
+      {/* Birthday Banner - Show only if it's the student's birthday */}
+      {isBirthday && (
+        <div className="mb-6 bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl p-6 text-white shadow-lg relative overflow-hidden">
+          {/* Confetti effect */}
+          <div className="absolute top-0 left-0 w-full h-full pointer-events-none">
+            {[...Array(20)].map((_, i) => (
+              <div
+                key={i}
+                className="absolute text-2xl opacity-70"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                  animation: `float ${5 + Math.random() * 5}s infinite ease-in-out`,
+                  animationDelay: `${Math.random() * 2}s`,
+                  transform: `rotate(${Math.random() * 360}deg)`,
+                }}
+              >
+                {['🎉', '🎊', '🎁', '🎈', '🥳'][i % 5]}
+              </div>
+            ))}
+          </div>
+          
+          <div className="flex items-center justify-between relative z-10">
+            <div className="flex items-center">
+              <div className="bg-white bg-opacity-20 p-3 rounded-full mr-4">
+                <CakeIcon className="h-8 w-8" />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold">Happy Birthday, {studentData.name.split(' ')[0]}!</h2>
+                <p className="opacity-90">Wishing you a wonderful day filled with joy and happiness!</p>
+                <p className="text-sm opacity-80 mt-1">- From your school family</p>
+              </div>
+            </div>
+            <div className="flex items-center bg-white bg-opacity-20 px-3 py-2 rounded-lg">
+              <ClockIcon className="h-5 w-5 mr-2" />
+              <span className="font-medium">{timeRemaining} left</span>
+            </div>
+          </div>
+          
+          <style jsx>{`
+            @keyframes float {
+              0%, 100% { transform: translateY(0) rotate(0deg); }
+              50% { transform: translateY(-10px) rotate(10deg); }
+            }
+          `}</style>
+        </div>
+      )}
+
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -125,6 +221,12 @@ const StudentDashboard = () => {
           <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
             Section: {studentData.section}
           </span>
+          {isBirthday && (
+            <span className="bg-pink-100 text-pink-800 text-xs font-medium px-2.5 py-0.5 rounded-full flex items-center">
+              <CakeIcon className="h-3 w-3 mr-1" />
+              Birthday!
+            </span>
+          )}
         </div>
       </div>
 
@@ -319,6 +421,15 @@ const StudentDashboard = () => {
                   {studentData.rollNumber}
                 </p>
               </div>
+              
+              {studentData.birthDate && (
+                <div>
+                  <p className="text-sm text-gray-500">Birth Date</p>
+                  <p className="font-medium text-gray-900">
+                    {new Date(studentData.birthDate).toLocaleDateString()}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
