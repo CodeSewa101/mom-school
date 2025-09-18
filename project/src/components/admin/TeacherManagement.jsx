@@ -59,7 +59,9 @@ export default function TeacherManagement() {
     'Art', 'Music', 'History', 'Geography', 'Economics'
   ];
 
-  const classes = ['Pre-K', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const classes = ["Nursery",
+    "LKG",
+    "UKG", '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const departments = ['Primary', 'Secondary', 'Senior Secondary', 'Administration'];
 
   // Pagination calculations

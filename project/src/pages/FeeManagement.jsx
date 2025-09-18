@@ -9,6 +9,8 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const FeeManagement = () => {
   // State for form inputs
@@ -29,9 +31,9 @@ const FeeManagement = () => {
 
   // Class options for dropdown
   const classOptions = [
-    "Pre K",
-    "Pre K-1",
-    "Pre K-2",
+    "Nursery",
+    "LKG",
+    "UKG",
     "Class 1",
     "Class 2",
     "Class 3",
@@ -84,6 +86,7 @@ const FeeManagement = () => {
       },
       (error) => {
         console.error("Error fetching fees: ", error);
+        toast.error("Failed to load fee records");
         setLoading(false);
       }
     );
@@ -113,12 +116,14 @@ const FeeManagement = () => {
           updatedAt: new Date(),
         });
         setEditingId(null);
+        toast.success("Fee record updated successfully");
       } else {
         // Add new fee to Firestore
         await addDoc(collection(db, "fees"), {
           ...feeData,
           createdAt: new Date(),
         });
+        toast.success("Fee record added successfully");
       }
 
       // Reset form
@@ -131,7 +136,7 @@ const FeeManagement = () => {
       });
     } catch (error) {
       console.error("Error saving fee: ", error);
-      alert("Error saving fee data. Please try again.");
+      toast.error("Error saving fee data. Please try again.");
     }
   };
 
@@ -147,6 +152,7 @@ const FeeManagement = () => {
         description: fee.description || "",
       });
       setEditingId(id);
+      toast.info("Editing fee record");
     }
   };
 
@@ -154,6 +160,7 @@ const FeeManagement = () => {
   const handleDelete = async (fee) => {
     if (!fee || !fee.id) {
       console.error("Cannot delete fee: Invalid fee object or ID");
+      toast.error("Cannot delete fee: Invalid record");
       return;
     }
 
@@ -164,9 +171,10 @@ const FeeManagement = () => {
     ) {
       try {
         await deleteDoc(doc(db, "fees", fee.id));
+        toast.success("Fee record deleted successfully");
       } catch (error) {
         console.error("Error deleting fee: ", error);
-        alert("Error deleting fee record. Please try again.");
+        toast.error("Error deleting fee record. Please try again.");
       }
     }
   };
@@ -181,6 +189,19 @@ const FeeManagement = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6">
         <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">
           Fee Management System

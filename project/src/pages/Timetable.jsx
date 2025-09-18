@@ -11,8 +11,9 @@ import { toast } from "react-toastify";
 import { useAuth } from "../contexts/AuthContext";
 
 const classOptions = [
-  "Pre-K",
-  "Kindergarten",
+  "Nursery",
+    "LKG",
+    "UKG",
   "Class 1",
   "Class 2",
   "Class 3",

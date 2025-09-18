@@ -67,16 +67,18 @@ export default function StudentManagement() {
     '2030-31'
   ];
 
-  const classes = ['Pre-K', 'K', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const classes = ["Nursery",
+    "LKG",
+    "UKG", '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const sections = ['A', 'B', 'C', 'D'];
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
-    class: '',
+    studentClass: '', // Changed from 'class'
     section: '',
-    rollNumber: '',
+    rollNo: '', // Changed from 'rollNumber'
     birthDate: '',
     address: '',
     parentName: '',
@@ -186,13 +188,13 @@ export default function StudentManagement() {
     if (searchTerm) {
       filtered = filtered.filter(student =>
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.rollNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) || // Changed from rollNumber
         student.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (filterClass) {
-      filtered = filtered.filter(student => student.class === filterClass);
+      filtered = filtered.filter(student => student.studentClass === filterClass); // Changed from class
     }
 
     setFilteredStudents(filtered);
@@ -342,9 +344,9 @@ export default function StudentManagement() {
       name: '',
       email: '',
       phone: '',
-      class: '',
+      studentClass: '', // Changed from 'class'
       section: '',
-      rollNumber: '',
+      rollNo: '', // Changed from 'rollNumber'
       birthDate: '',
       address: '',
       parentName: '',
@@ -377,7 +379,7 @@ export default function StudentManagement() {
     try {
       const batch = [];
       students.forEach(student => {
-        const currentClass = parseInt(student.class);
+        const currentClass = parseInt(student.studentClass); // Changed from class
         const studentYearIndex = academicYears.indexOf(student.academicYear);
         const updates = {
           updatedAt: new Date()
@@ -385,7 +387,7 @@ export default function StudentManagement() {
         
         // Promote class if not already in the highest class (12)
         if (currentClass < 12) {
-          updates.class = (currentClass + 1).toString();
+          updates.studentClass = (currentClass + 1).toString(); // Changed from class
         }
         
         // Promote academic year if not already at the last year
@@ -555,7 +557,7 @@ export default function StudentManagement() {
                     Class & Section
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Roll Number
+                    Roll No {/* Changed from Roll Number */}
                   </th>
                   <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Academic Year
@@ -592,14 +594,14 @@ export default function StudentManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Class {student.class}
+                          Class {student.studentClass} {/* Changed from class */}
                         </span>
                         <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                           Section {student.section}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {student.rollNumber}
+                        {student.rollNo} {/* Changed from rollNumber */}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -910,8 +912,8 @@ export default function StudentManagement() {
                         Class *
                       </label>
                       <select
-                        name="class"
-                        value={formData.class}
+                        name="studentClass" // Changed from class
+                        value={formData.studentClass} // Changed from class
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
@@ -943,12 +945,12 @@ export default function StudentManagement() {
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Roll Number *
+                        Roll No * {/* Changed from Roll Number */}
                       </label>
                       <input
                         type="text"
-                        name="rollNumber"
-                        value={formData.rollNumber}
+                        name="rollNo" // Changed from rollNumber
+                        value={formData.rollNo} // Changed from rollNumber
                         onChange={handleInputChange}
                         required
                         className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"

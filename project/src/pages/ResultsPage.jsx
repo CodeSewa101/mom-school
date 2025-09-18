@@ -1,4 +1,3 @@
-// ResultPage.jsx
 import React, { useState, useEffect } from "react";
 import { db } from "../config/firebase";
 import {
@@ -9,6 +8,8 @@ import {
   doc,
   onSnapshot,
 } from "firebase/firestore";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const ResultPage = () => {
   // State for form inputs
@@ -29,19 +30,9 @@ const ResultPage = () => {
 
   // Class options for dropdown - defined as a constant
   const classOptions = [
-    "Pre K",
-    "Pre K-1",
-    "Pre K-2",
-    "Class 1",
-    "Class 2",
-    "Class 3",
-    "Class 4",
-    "Class 5",
-    "Class 6",
-    "Class 7",
-    "Class 8",
-    "Class 9",
-    "Class 10",
+    "Nursery",
+    "LKG",
+    "UKG", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"
   ];
 
   // Fetch students from Firestore
@@ -61,6 +52,7 @@ const ResultPage = () => {
       },
       (error) => {
         console.error("Error fetching students: ", error);
+        toast.error("Failed to load student records");
         setLoading(false);
       }
     );
@@ -163,9 +155,11 @@ const ResultPage = () => {
         const studentRef = doc(db, "students", editingId);
         await updateDoc(studentRef, studentRecord);
         setEditingId(null);
+        toast.success("Student record updated successfully!");
       } else {
         // Add new student to Firestore
         await addDoc(collection(db, "students"), studentRecord);
+        toast.success("Student record added successfully!");
       }
 
       // Reset form
@@ -179,7 +173,7 @@ const ResultPage = () => {
       });
     } catch (error) {
       console.error("Error saving student: ", error);
-      alert("Error saving student data. Please try again.");
+      toast.error("Error saving student data. Please try again.");
     }
   };
 
@@ -208,6 +202,7 @@ const ResultPage = () => {
             ],
       });
       setEditingId(id);
+      toast.info("Editing student record");
     }
   };
 
@@ -215,6 +210,7 @@ const ResultPage = () => {
   const handleDelete = async (student) => {
     if (!student || !student.id) {
       console.error("Cannot delete student: Invalid student object or ID");
+      toast.error("Cannot delete student: Invalid data");
       return;
     }
 
@@ -225,9 +221,10 @@ const ResultPage = () => {
     ) {
       try {
         await deleteDoc(doc(db, "students", student.id));
+        toast.success("Student record deleted successfully!");
       } catch (error) {
         console.error("Error deleting student: ", error);
-        alert("Error deleting student record. Please try again.");
+        toast.error("Error deleting student record. Please try again.");
       }
     }
   };
@@ -242,6 +239,19 @@ const ResultPage = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
+      
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-md p-6">
         <h1 className="text-3xl font-bold text-center text-blue-700 mb-8">
           Student Report Card System
@@ -300,7 +310,7 @@ const ResultPage = () => {
                 {classOptions &&
                   classOptions.map((cls, index) => (
                     <option key={index} value={cls}>
-                      {cls}
+                      Class {cls}
                     </option>
                   ))}
               </select>
@@ -431,7 +441,7 @@ const ResultPage = () => {
                 {classOptions &&
                   classOptions.map((cls, index) => (
                     <option key={index} value={cls}>
-                      {cls}
+                      Class {cls}
                     </option>
                   ))}
               </select>

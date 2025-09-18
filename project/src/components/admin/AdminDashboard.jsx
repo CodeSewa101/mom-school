@@ -22,7 +22,6 @@ export default function AdminDashboard() {
     birthdaysToday: 0
   });
 
-  const [recentActivities, setRecentActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [birthdayStudents, setBirthdayStudents] = useState([]);
   const [showBirthdaySection, setShowBirthdaySection] = useState(true);
@@ -91,14 +90,6 @@ export default function AdminDashboard() {
 
       setBirthdayStudents(todaysBirthdays);
 
-      // Mock recent activities
-      setRecentActivities([
-        { id: 1, type: 'student', message: 'New student John Doe registered', time: '2 hours ago' },
-        { id: 2, type: 'fee', message: 'Fee payment received from Jane Smith', time: '4 hours ago' },
-        { id: 3, type: 'attendance', message: 'Attendance marked for Grade 5A', time: '6 hours ago' },
-        { id: 4, type: 'announcement', message: 'New announcement posted', time: '1 day ago' }
-      ]);
-
       setLoading(false);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -112,8 +103,6 @@ export default function AdminDashboard() {
       title: 'Total Students',
       value: stats.totalStudents,
       icon: Users,
-      iconBg: 'bg-blue-100',
-      iconColor: 'text-blue-600',
       cardBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
       textColor: 'text-white',
       change: '+12%',
@@ -123,8 +112,6 @@ export default function AdminDashboard() {
       title: 'Total Teachers',
       value: stats.totalTeachers,
       icon: GraduationCap,
-      iconBg: 'bg-emerald-100',
-      iconColor: 'text-emerald-600',
       cardBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
       textColor: 'text-white',
       change: '+3%',
@@ -134,8 +121,6 @@ export default function AdminDashboard() {
       title: 'Total Fees Collected',
       value: `₹${stats.totalFees.toLocaleString('en-IN')}`,
       icon: DollarSign,
-      iconBg: 'bg-amber-100',
-      iconColor: 'text-amber-600',
       cardBg: 'bg-gradient-to-br from-amber-500 to-amber-600',
       textColor: 'text-white',
       change: '+18%',
@@ -145,8 +130,6 @@ export default function AdminDashboard() {
       title: 'Birthdays Today',
       value: stats.birthdaysToday,
       icon: Calendar,
-      iconBg: 'bg-purple-100',
-      iconColor: 'text-purple-600',
       cardBg: 'bg-gradient-to-br from-purple-500 to-purple-600',
       textColor: 'text-white',
       change: stats.birthdaysToday > 0 ? '🎉' : '—',
@@ -180,7 +163,7 @@ export default function AdminDashboard() {
           <p className="text-gray-600 mt-2">Welcome back! Here's what's happening at your school today.</p>
         </div>
 
-        {/* Stats Grid - Updated with different colors */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           {statCards.map((card, index) => (
             <div key={index} className={`${card.cardBg} rounded-xl shadow-lg p-6 text-white transform transition-all hover:scale-105`}>
@@ -190,7 +173,7 @@ export default function AdminDashboard() {
                   <p className="text-2xl font-bold mt-2">{card.value}</p>
                   <p className={`text-sm ${card.changeColor} mt-1`}>{card.change}</p>
                 </div>
-                <div className={`p-3 rounded-xl bg-white bg-opacity-20`}>
+                <div className="p-3 rounded-xl bg-white bg-opacity-20">
                   <card.icon className={`h-6 w-6 ${card.textColor}`} />
                 </div>
               </div>
@@ -198,7 +181,7 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* Two-column layout for Quick Actions, Recent Activity, and Birthday Section */}
+        {/* Two-column layout for Quick Actions and Birthday Section */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
@@ -223,30 +206,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Recent Activity and Birthday Section */}
+          {/* Birthday Section */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Recent Activity */}
-            <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Activity</h2>
-              <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3 p-4 bg-gray-50 rounded-xl border border-gray-200">
-                    <div className="flex-shrink-0">
-                      {activity.type === 'student' && <Users className="h-5 w-5 text-blue-500" />}
-                      {activity.type === 'fee' && <DollarSign className="h-5 w-5 text-green-500" />}
-                      {activity.type === 'attendance' && <UserCheck className="h-5 w-5 text-amber-500" />}
-                      {activity.type === 'announcement' && <Bell className="h-5 w-5 text-purple-500" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-900">{activity.message}</p>
-                      <p className="text-xs text-gray-500 mt-1">{activity.time}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Birthday Section - Only show for 24 hours */}
             {showBirthdaySection && (
               <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100">
                 <div className="flex items-center justify-between mb-6">

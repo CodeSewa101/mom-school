@@ -29,14 +29,19 @@ const StudentDashboard = () => {
 
   useEffect(() => {
     if (userData && currentUser) {
+      // Check the actual structure of userData by logging it
+      console.log("User Data:", userData);
+      
+      // Use the correct field names from your userData
+      // If rollNumber is not available, try rollNo (from your StudentManagement component)
       const actualStudentData = {
         id: currentUser.uid,
         name: userData.name,
-        rollNumber: userData.rollNumber,
-        class: userData.class,
-        section: userData.section,
+        rollNumber: userData.rollNumber || userData.rollNo || "N/A", // Try both possibilities
+        class: userData.class || userData.studentClass || "N/A", // Try both possibilities
+        section: userData.section || "N/A",
         email: userData.email,
-        academicYear: userData.academicYear,
+        academicYear: userData.academicYear || "N/A",
       };
 
       setStudentData(actualStudentData);
@@ -112,13 +117,13 @@ const StudentDashboard = () => {
         </h1>
         <div className="flex flex-wrap items-center gap-4 mt-2">
           <span className="bg-blue-100 text-blue-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-            Roll No: {studentData.rollNumber || "N/A"}
+            Roll No: {studentData.rollNumber}
           </span>
           <span className="bg-purple-100 text-purple-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-            Class: {studentData.class || "N/A"}
+            Class: {studentData.class}
           </span>
           <span className="bg-green-100 text-green-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
-            Section: {studentData.section || "N/A"}
+            Section: {studentData.section}
           </span>
         </div>
       </div>
@@ -274,7 +279,7 @@ const StudentDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-500">Class</p>
                   <p className="font-medium text-gray-900">
-                    {studentData.class || "N/A"}
+                    {studentData.class}
                   </p>
                 </div>
               </div>
@@ -284,7 +289,7 @@ const StudentDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-500">Section</p>
                   <p className="font-medium text-gray-900">
-                    {studentData.section || "N/A"}
+                    {studentData.section}
                   </p>
                 </div>
               </div>
@@ -294,7 +299,7 @@ const StudentDashboard = () => {
                 <div>
                   <p className="text-sm text-gray-500">Academic Year</p>
                   <p className="font-medium text-gray-900">
-                    {studentData.academicYear || "N/A"}
+                    {studentData.academicYear}
                   </p>
                 </div>
               </div>
@@ -304,14 +309,14 @@ const StudentDashboard = () => {
               <div>
                 <p className="text-sm text-gray-500">Email</p>
                 <p className="font-medium text-gray-900">
-                  {studentData.email || "N/A"}
+                  {studentData.email}
                 </p>
               </div>
 
               <div>
                 <p className="text-sm text-gray-500">Roll Number</p>
                 <p className="font-medium text-gray-900">
-                  {studentData.rollNumber || "N/A"}
+                  {studentData.rollNumber}
                 </p>
               </div>
             </div>
