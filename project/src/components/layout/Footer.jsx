@@ -158,12 +158,12 @@ export default function Footer() {
               </h3>
               <ul className="space-y-2 sm:space-y-3">
                 {[
-                  { name: "About Us", href: "#" },
+                  { name: "About Us", href: "/about" },
                   { name: "Admissions", href: "#" },
                   { name: "Photo Gallery", href: "/gallery" },
                   { name: "Academic Programs", href: "#" },
                   { name: "Faculty", href: "#" },
-                  { name: "Contact", href: "#" },
+                  { name: "Contact", href: "/contact" },
                 ].map((link, index) => (
                   <li key={index}>
                     <a
@@ -194,7 +194,7 @@ export default function Footer() {
                   { name: "Calendar", href: "/calendar" },
                   { name: "Results", href: "/tc-verify" },
                   { name: "Downloads", href: "/resources" },
-                  { name: "Student Portal", href: "#" },
+                  { name: "Student Portal", href: "/student" },
                 ].map((link, index) => (
                   <li key={index}>
                     <a

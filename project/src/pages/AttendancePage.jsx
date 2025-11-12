@@ -99,7 +99,7 @@ const AttendancePage = () => {
         collection(db, "students"),
         where("class", "==", selectedClass),
         where("section", "==", selectedSection),
-        orderBy("rollNo")
+        // Remove orderBy('rollNo') to avoid index issues
       );
 
       const querySnapshot = await getDocs(studentsQuery);
@@ -109,9 +109,22 @@ const AttendancePage = () => {
         studentsData.push({ id: doc.id, ...doc.data() });
       });
 
+      // Sort locally by rollNo instead of using orderBy in query
+      studentsData.sort((a, b) => {
+        const rollA = a.rollNo || '';
+        const rollB = b.rollNo || '';
+        return rollA.localeCompare(rollB);
+      });
       setStudents(studentsData);
       setFilteredStudents(studentsData);
 
+
+      // Fetch appropriate attendance records based on view mode
+      if (viewMode === "mark") {
+        fetchAttendanceRecords();
+      } else {
+        fetchAttendanceRecordsForRange();
+      }
       // Also fetch attendance records for the selected date
       fetchAttendanceRecords();
     } catch (error) {
@@ -141,36 +154,119 @@ const AttendancePage = () => {
       });
 
       setAttendanceRecords(attendanceData);
+      console.log(`Fetched ${attendanceData.length} attendance records for ${selectedDate}`); // Debug log
     } catch (error) {
       console.error("Error fetching attendance:", error);
     }
   };
 
+  // To fetch attendance record for date range
+  const fetchAttendanceRecordsForRange = async () => {
+    try {
+      if (!selectedClass || !selectedSection || !viewStartDate || !viewEndDate) return;
+
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("class", "==", selectedClass),
+        where("section", "==", selectedSection),
+        where("date", ">=", viewStartDate),
+        where("date", "<=", viewEndDate)
+      );
+
+      const querySnapshot = await getDocs(attendanceQuery);
+      const attendanceData = [];
+
+      querySnapshot.forEach((doc) => {
+        attendanceData.push({ id: doc.id, ...doc.data() });
+      });
+
+      setAttendanceRecords(attendanceData);
+      console.log(`Fetched ${attendanceData.length} attendance records for range ${viewStartDate} to ${viewEndDate}`);
+    } catch (error) {
+      console.error("Error fetching attendance records for range:", error);
+      // alert("Error fetching attendance records. Please check the console.");
+    }
+  };
   // Real-time listener for attendance changes
   useEffect(() => {
     if (!selectedClass || !selectedSection) return;
 
-    const attendanceQuery = query(
-      collection(db, "attendance"),
-      where("class", "==", selectedClass),
-      where("section", "==", selectedSection),
-      where("date", "==", selectedDate)
-    );
+    let unsubscribe;
 
-    const unsubscribe = onSnapshot(attendanceQuery, (querySnapshot) => {
-      const attendanceData = [];
-      querySnapshot.forEach((doc) => {
-        attendanceData.push({ id: doc.id, ...doc.data() });
-      });
-      setAttendanceRecords(attendanceData);
-    });
+    if (viewMode === "mark") {
+      // For mark mode, listen to single date
+      if (!selectedDate) return;
 
-    return () => unsubscribe();
-  }, [selectedClass, selectedSection, selectedDate]);
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("class", "==", selectedClass),
+        where("section", "==", selectedSection),
+        where("date", "==", selectedDate)
+      );
+
+      unsubscribe = onSnapshot(
+        attendanceQuery,
+        (querySnapshot) => {
+          const attendanceData = [];
+          querySnapshot.forEach((doc) => {
+            attendanceData.push({ id: doc.id, ...doc.data() });
+          });
+          setAttendanceRecords(attendanceData);
+          console.log(`Real-time update (mark mode): ${attendanceData.length} records`);
+        },
+        (error) => {
+          console.error("Error in real-time listener:", error);
+        }
+      );
+    } else {
+      // For view mode, listen to date range
+      if (!viewStartDate || !viewEndDate) return;
+
+      const attendanceQuery = query(
+        collection(db, "attendance"),
+        where("class", "==", selectedClass),
+        where("section", "==", selectedSection),
+        where("date", ">=", viewStartDate),
+        where("date", "<=", viewEndDate)
+      );
+
+      unsubscribe = onSnapshot(
+        attendanceQuery,
+        (querySnapshot) => {
+          const attendanceData = [];
+          querySnapshot.forEach((doc) => {
+            attendanceData.push({ id: doc.id, ...doc.data() });
+          });
+          setAttendanceRecords(attendanceData);
+          console.log(`Real-time update (view mode): ${attendanceData.length} records for range`);
+        },
+        (error) => {
+          console.error("Error in real-time listener:", error);
+        }
+      );
+    }
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [selectedClass, selectedSection, selectedDate, viewMode, viewStartDate, viewEndDate]);
+
+  // Add this new useEffect after the existing ones
+  useEffect(() => {
+    if (viewMode === "view" && selectedClass && selectedSection) {
+      fetchAttendanceRecordsForRange();
+    }
+  }, [viewStartDate, viewEndDate, viewMode]);
 
   useEffect(() => {
     fetchStudents();
   }, [selectedClass, selectedSection]);
+
+  useEffect(() => {
+    if (selectedClass && selectedSection) {
+      fetchAttendanceRecords();
+    }
+  }, [selectedDate]); // Add selectedDate as dependency
 
   useEffect(() => {
     filterStudents();
@@ -195,51 +291,47 @@ const AttendancePage = () => {
       const attendanceId = `${studentId}-${selectedDate}`;
       const attendanceRef = doc(db, "attendance", attendanceId);
 
-      // Always save the attendance record, even if status is empty
-      await setDoc(
-        attendanceRef,
-        {
-          studentId,
-          date: selectedDate,
-          status,
-          class: selectedClass,
-          section: selectedSection,
-          timestamp: new Date().toISOString(),
-        },
-        { merge: true }
-      );
+      const attendanceData = {
+        studentId,
+        date: selectedDate,
+        status,
+        class: selectedClass,
+        section: selectedSection,
+        timestamp: new Date().toISOString(),
+      };
 
-      // Update the local state
-      const existingRecordIndex = attendanceRecords.findIndex(
-        (record) =>
-          record.studentId === studentId && record.date === selectedDate
-      );
+      // Use setDoc with merge to ensure data persists
+      await setDoc(attendanceRef, attendanceData, { merge: true });
 
-      let updatedRecords;
-      if (existingRecordIndex >= 0) {
-        updatedRecords = [...attendanceRecords];
-        updatedRecords[existingRecordIndex].status = status;
-        updatedRecords[existingRecordIndex].timestamp =
-          new Date().toISOString();
-      } else {
-        updatedRecords = [
-          ...attendanceRecords,
-          {
-            id: attendanceId, // Make sure to include the id
-            studentId,
-            date: selectedDate,
+      console.log(`Attendance saved: ${studentId} - ${status}`); // Debug log
+
+      // Update local state immediately for better UX
+      setAttendanceRecords(prevRecords => {
+        const existingIndex = prevRecords.findIndex(
+          (record) => record.studentId === studentId && record.date === selectedDate
+        );
+
+        if (existingIndex >= 0) {
+          const updatedRecords = [...prevRecords];
+          updatedRecords[existingIndex] = {
+            ...updatedRecords[existingIndex],
             status,
             timestamp: new Date().toISOString(),
-            class: selectedClass,
-            section: selectedSection,
-          },
-        ];
-      }
-
-      setAttendanceRecords(updatedRecords);
+          };
+          return updatedRecords;
+        } else {
+          return [
+            ...prevRecords,
+            {
+              id: attendanceId,
+              ...attendanceData,
+            },
+          ];
+        }
+      });
     } catch (error) {
       console.error("Error updating attendance:", error);
-      alert("Failed to update attendance");
+      alert(`Failed to update attendance: ${error.message}`);
     }
   };
 
@@ -351,11 +443,11 @@ const AttendancePage = () => {
       const updatedStudents = students.map((student) =>
         student.id === editingStudent
           ? {
-              ...student,
-              name: editFormData.name,
-              rollNo: editFormData.rollNo,
-              contact: editFormData.contact,
-            }
+            ...student,
+            name: editFormData.name,
+            rollNo: editFormData.rollNo,
+            contact: editFormData.contact,
+          }
           : student
       );
 
@@ -401,7 +493,15 @@ const AttendancePage = () => {
 
   // Toggle view mode
   const toggleViewMode = () => {
-    setViewMode(viewMode === "mark" ? "view" : "mark");
+    const newMode = viewMode === "mark" ? "view" : "mark";
+    setViewMode(newMode);
+
+    // Fetch appropriate attendance records when switching modes
+    if (newMode === "view") {
+      fetchAttendanceRecordsForRange();
+    } else {
+      fetchAttendanceRecords();
+    }
   };
 
   // Get status icon
@@ -507,11 +607,10 @@ const AttendancePage = () => {
             )}
             <button
               onClick={toggleViewMode}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${
-                viewMode === "mark"
+              className={`px-4 py-2 rounded-lg flex items-center gap-2 ${viewMode === "mark"
                   ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
                   : "bg-purple-100 text-purple-700 hover:bg-purple-200"
-              }`}
+                }`}
             >
               <Eye className="h-4 w-4" />
               {viewMode === "mark" ? "View Records" : "Mark Attendance"}
@@ -729,9 +828,8 @@ const AttendancePage = () => {
                             <>
                               <tr
                                 key={student.id}
-                                className={`hover:bg-gray-50 ${
-                                  isExpanded ? "bg-gray-50" : ""
-                                }`}
+                                className={`hover:bg-gray-50 ${isExpanded ? "bg-gray-50" : ""
+                                  }`}
                               >
                                 <td className="px-6 py-4">
                                   <div className="flex items-center">
@@ -814,11 +912,10 @@ const AttendancePage = () => {
                                               "present"
                                             )
                                           }
-                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${
-                                            status === "present"
+                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${status === "present"
                                               ? "bg-green-100 text-green-800"
                                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                          }`}
+                                            }`}
                                         >
                                           <CheckCircle2 className="h-4 w-4" />
                                           Present
@@ -830,11 +927,10 @@ const AttendancePage = () => {
                                               "absent"
                                             )
                                           }
-                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${
-                                            status === "absent"
+                                          className={`px-3 py-1 rounded-lg flex items-center gap-1 text-sm ${status === "absent"
                                               ? "bg-red-100 text-red-800"
                                               : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                                          }`}
+                                            }`}
                                         >
                                           <XCircle className="h-4 w-4" />
                                           Absent
@@ -932,13 +1028,13 @@ const AttendancePage = () => {
                                 No students found in Class {selectedClass}{" "}
                                 Section {selectedSection}
                               </p>
-                              <button
+                              {/* <button
                                 onClick={() => setIsAddingStudent(true)}
                                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 flex items-center gap-2"
                               >
                                 <Plus className="h-4 w-4" />
                                 Add New Student
-                              </button>
+                              </button> */}
                             </div>
                           </td>
                         </tr>
@@ -1077,11 +1173,10 @@ const AttendancePage = () => {
                   <button
                     onClick={handleSubmit}
                     disabled={isSubmitting || filteredStudents.length === 0}
-                    className={`px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-colors duration-200 flex items-center gap-2 ${
-                      isSubmitting || filteredStudents.length === 0
+                    className={`px-6 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-700 hover:to-purple-700 transition-colors duration-200 flex items-center gap-2 ${isSubmitting || filteredStudents.length === 0
                         ? "opacity-70 cursor-not-allowed"
                         : ""
-                    }`}
+                      }`}
                   >
                     {isSubmitting ? (
                       "Submitting..."

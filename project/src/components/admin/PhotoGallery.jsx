@@ -139,41 +139,65 @@ export default function PhotoGallery() {
   };
 
   const handleImageUpload = async (formType, e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  const file = e.target.files[0];
+  if (!file) return;
 
-    if (!file.type.match('image.*')) {
-      toast.error('Please select an image file');
-      return;
+  if (!file.type.match('image.*')) {
+    toast.error('Please select an image file');
+    return;
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error('Image size must be less than 5MB');
+    return;
+  }
+
+  setState(prev => ({ ...prev, uploading: true }));
+
+  try {
+    // uploadToCloudinary returns an object with { url, publicId, width, height, format }
+    const uploadResult = await uploadToCloudinary(file);
+    
+    // Extract the URL from the result object
+    const imageUrl = uploadResult.url;
+    
+    if (!imageUrl || imageUrl.trim() === '') {
+      throw new Error('Invalid image URL returned');
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size must be less than 5MB');
-      return;
-    }
+    setForms(prev => ({
+      ...prev,
+      [formType]: {
+        ...prev[formType],
+        [formType === 'album' ? 'coverImage' : 'imageUrl']: imageUrl
+      }
+    }));
 
-    setState(prev => ({ ...prev, uploading: true }));
-
-    try {
-      const imageUrl = await uploadToCloudinary(file);
-      if (!imageUrl) throw new Error('Upload failed');
-
+    toast.success('Image uploaded successfully');
+  } catch (error) {
+    console.error('Upload error:', error);
+    toast.error(error.message || 'Upload failed');
+    
+    // Optional: Fallback to base64 preview if upload fails
+    const reader = new FileReader();
+    reader.onloadend = () => {
       setForms(prev => ({
         ...prev,
         [formType]: {
           ...prev[formType],
-          [formType === 'album' ? 'coverImage' : 'imageUrl']: imageUrl
+          [formType === 'album' ? 'coverImage' : 'imageUrl']: reader.result
         }
       }));
-
-      toast.success('Image uploaded successfully');
-    } catch (error) {
-      console.error('Upload error:', error);
-      toast.error(error.message || 'Upload failed');
-    } finally {
-      setState(prev => ({ ...prev, uploading: false }));
-    }
-  };
+      toast.success('Image loaded (local preview only)');
+    };
+    reader.onerror = () => {
+      toast.error('Failed to load image');
+    };
+    reader.readAsDataURL(file);
+  } finally {
+    setState(prev => ({ ...prev, uploading: false }));
+  }
+};
 
   const handleAlbumSubmit = async (e) => {
     e.preventDefault();

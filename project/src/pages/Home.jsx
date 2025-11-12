@@ -14,13 +14,13 @@ import {
   FileText,
   CheckCircle,
   GraduationCap,
-  Globe,
-  Activity,
-  Smile,
+  // Globe, // Not used
+  // Activity, // Not used
+  // Smile, // Not used
   ArrowRight,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import SchoolNavigation from "./SchoolNavigation";
+// import SchoolNavigation from "./SchoolNavigation"; // Not used
 
 // Animation variants
 const container = {
@@ -39,141 +39,143 @@ const item = {
 };
 
 export default function Home() {
-  const features = [
-    {
-      icon: BookOpen,
-      title: "Quality Education",
-      description: "Comprehensive curriculum for academic excellence.",
-      color: "text-violet-600",
-      bgColor: "bg-violet-50",
-    },
-    {
-      icon: Users,
-      title: "Experienced Faculty",
-      description: "Dedicated teachers with personalized approach.",
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-    },
-    {
-      icon: Award,
-      title: "Achievement Focus",
-      description: "Excellence in academics and extracurriculars.",
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-    },
-    {
-      icon: Calendar,
-      title: "Holistic Development",
-      description: "Balanced intellectual and emotional growth.",
-      color: "text-rose-600",
-      bgColor: "bg-rose-50",
-    },
-  ];
+  // const features = [ // Not used
+  //   {
+  //     icon: BookOpen,
+  //     title: "Quality Education",
+  //     description: "Comprehensive curriculum for academic excellence.",
+  //     color: "text-violet-600",
+  //     bgColor: "bg-violet-50",
+  //   },
+  //   {
+  //     icon: Users,
+  //     title: "Experienced Faculty",
+  //     description: "Dedicated teachers with personalized approach.",
+  //     color: "text-emerald-600",
+  //     bgColor: "bg-emerald-50",
+  //   },
+  //   {
+  //     icon: Award,
+  //     title: "Achievement Focus",
+  //     description: "Excellence in academics and extracurriculars.",
+  //     color: "text-amber-600",
+  //     bgColor: "bg-amber-50",
+  //   },
+  //   {
+  //     icon: Calendar,
+  //     title: "Holistic Development",
+  //     description: "Balanced intellectual and emotional growth.",
+  //     color: "text-rose-600",
+  //     bgColor: "bg-rose-50",
+  //   },
+  // ];
 
-  const quickLinks = [
-    {
-      icon: Clock,
-      title: "Time Table",
-      action: "View",
-      color: "text-violet-600",
-      bgColor: "bg-violet-50",
-      href: "/admin/timetable",
-    },
-    {
-      icon: Bell,
-      title: "Notices",
-      action: "View",
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-50",
-      href: "/notices",
-    },
-    {
-      icon: CalendarDays,
-      title: "Calendar",
-      action: "View",
-      color: "text-amber-600",
-      bgColor: "bg-amber-50",
-      href: "/calendar",
-    },
-    {
-      icon: FileText,
-      title: "Resources",
-      action: "Access",
-      color: "text-rose-600",
-      bgColor: "bg-rose-50",
-      href: "/resources",
-    },
-    {
-      icon: CheckCircle,
-      title: "Admissions",
-      action: "Apply",
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-50",
-      href: "/admissions",
-    },
-  ];
+  // const quickLinks = [ // Not used
+  //   {
+  //     icon: Clock,
+  //     title: "Time Table",
+  //     action: "View",
+  //     color: "text-violet-600",
+  //     bgColor: "bg-violet-50",
+  //     href: "/admin/timetable",
+  //   },
+  //   {
+  //     icon: Bell,
+  //     title: "Notices",
+  //     action: "View",
+  //     color: "text-emerald-600",
+  //     bgColor: "bg-emerald-50",
+  //     href: "/notices",
+  //   },
+  //   {
+  //     icon: CalendarDays,
+  //     title: "Calendar",
+  //     action: "View",
+  //     color: "text-amber-600",
+  //     bgColor: "bg-amber-50",
+  //     href: "/calendar",
+  //   },
+  //   {
+  //     icon: FileText,
+  //     title: "Resources",
+  //     action: "Access",
+  //     color: "text-rose-600",
+  //     bgColor: "bg-rose-50",
+  //     href: "/resources",
+  //   },
+  //   {
+  //     icon: CheckCircle,
+  //     title: "Admissions",
+  //     action: "Apply",
+  //     color: "text-cyan-600",
+  //     bgColor: "bg-cyan-50",
+  //     href: "/admissions",
+  //   },
+  // ];
 
-  const academicResources = [
-    {
-      icon: Clock,
-      title: "Time Table",
-      description: "View class schedules and academic timings",
-      color: "text-violet-600",
-      bgColor: "bg-violet-100/50",
-      borderColor: "border-violet-200",
-      href: "/admin/timetable",
-    },
-    {
-      icon: Bell,
-      title: "Notices",
-      description: "Important announcements and updates",
-      color: "text-emerald-600",
-      bgColor: "bg-emerald-100/50",
-      borderColor: "border-emerald-200",
-      href: "/notices",
-    },
-    {
-      icon: CalendarDays,
-      title: "Calendar",
-      description: "Academic events and holidays",
-      color: "text-amber-600",
-      bgColor: "bg-amber-100/50",
-      borderColor: "border-amber-200",
-      href: "/calendar",
-    },
-    {
-      icon: FileText,
-      title: "Solutions",
-      description: "Study materials and resources",
-      color: "text-rose-600",
-      bgColor: "bg-rose-100/50",
-      borderColor: "border-rose-200",
-      href: "/resources",
-    },
-    {
-      icon: CheckCircle,
-      title: "TC Verify",
-      description: "Transfer certificate verification",
-      color: "text-cyan-600",
-      bgColor: "bg-cyan-100/50",
-      borderColor: "border-cyan-200",
-      href: "/tc-verify",
-    },
-  ];
+  // const academicResources = [ // Not used
+  //   {
+  //     icon: Clock,
+  //     title: "Time Table",
+  //     description: "View class schedules and academic timings",
+  //     color: "text-violet-600",
+  //     bgColor: "bg-violet-100/50",
+  //     borderColor: "border-violet-200",
+  //     href: "/admin/timetable",
+  //   },
+  //   {
+  //     icon: Bell,
+  //     title: "Notices",
+  //     description: "Important announcements and updates",
+  //     color: "text-emerald-600",
+  //     bgColor: "bg-emerald-100/50",
+  //     borderColor: "border-emerald-200",
+  //     href: "/notices",
+  //   },
+  //   {
+  //     icon: CalendarDays,
+  //     title: "Calendar",
+  //     description: "Academic events and holidays",
+  //     color: "text-amber-600",
+  //     bgColor: "bg-amber-100/50",
+  //     borderColor: "border-amber-200",
+  //     href: "/calendar",
+  //   },
+  //   {
+  //     icon: FileText,
+  //     title: "Solutions",
+  //     description: "Study materials and resources",
+  //     color: "text-rose-600",
+  //     bgColor: "bg-rose-100/50",
+  //     borderColor: "border-rose-200",
+  //     href: "/resources",
+  //   },
+  //   {
+  //     icon: CheckCircle,
+  //     title: "TC Verify",
+  //     description: "Transfer certificate verification",
+  //     color: "text-cyan-600",
+  //     bgColor: "bg-cyan-100/50",
+  //     borderColor: "border-cyan-200",
+  //     href: "/tc-verify",
+  //   },
+  // ];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Hero Banner */}
       <HeroBanner />
 
       {/* Message Scroll */}
       <MessageScroll />
 
-      {/* Notification Bar */}
-      <NotificationBar />
+      {/* Notification Bar - Desktop: order 1, Mobile: order 2 */}
+      <div className="order-2 lg:order-1">
+        <NotificationBar />
+      </div>
 
-      {/* Welcome Section */}
-      <section className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-8 bg-gradient-to-br from-white via-violet-50/30 to-rose-50/30 relative overflow-hidden">
+      {/* Welcome Section - Desktop: order 2, Mobile: order 1 */}
+      <section className="py-12 sm:py-16 lg:py-20 px-3 sm:px-4 lg:px-8 bg-gradient-to-br from-white via-violet-50/30 to-rose-50/30 relative overflow-hidden order-1 lg:order-2">
         <div className="absolute inset-0 opacity-5 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         <div className="absolute top-0 right-0 w-64 h-64 sm:w-96 sm:h-96 rounded-full bg-gradient-to-br from-violet-200/20 to-rose-200/20 -translate-y-32 translate-x-32"></div>
         <div className="absolute bottom-0 left-0 w-48 h-48 sm:w-80 sm:h-80 rounded-full bg-gradient-to-tr from-emerald-200/20 to-cyan-200/20 translate-y-24 -translate-x-24"></div>
@@ -200,8 +202,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Academic Session Section */}
-      <section className="relative py-12 sm:py-16 lg:py-20 bg-white">
+      {/* Academic Session Section - Desktop: order 3, Mobile: order 3 */}
+      <section className="relative py-12 sm:py-16 lg:py-20 bg-white order-3">
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
           {/* Resources Grid - First Row (3 cards) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8 mb-6 sm:mb-8">
@@ -231,7 +233,7 @@ export default function Home() {
                 </div>
                 <div className="mt-auto">
                   <Link
-                    to="/admin/timetable"
+                    to="/timetable"
                     className="inline-flex items-center text-violet-600 hover:text-violet-800 font-medium group-hover:underline transition-colors duration-300"
                   >
                     <span className="text-sm sm:text-base">View Schedule</span>
@@ -393,8 +395,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Principal's Message Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-gray-50 to-violet-50/30 relative overflow-hidden">
+      {/* Principal's Message Section - Desktop: order 4, Mobile: order 4 */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-gray-50 to-violet-50/30 relative overflow-hidden order-4">
         <div className="absolute top-0 right-0 w-40 h-40 sm:w-64 sm:h-64 rounded-full bg-gradient-to-br from-violet-200/10 to-rose-200/10 -translate-y-20 translate-x-20"></div>
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 relative z-10">
           {/* Section Heading */}
@@ -498,8 +500,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-r from-blue-600 to-blue-500 text-white relative overflow-hidden">
+      {/* Stats Section - Desktop: order 5, Mobile: order 5 */}
+      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-r from-blue-600 to-blue-500 text-white relative overflow-hidden order-5">
         <div className="absolute inset-0 opacity-10"></div>
 
         <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8 relative z-10">
@@ -558,8 +560,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Testimonial Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-gray-50 to-rose-50/30 relative overflow-hidden">
+      {/* Testimonial Section - Desktop: order 6, Mobile: order 6 */}
+      <section className="py-12 sm:py-16 lg:py-20 bg-gradient-to-br from-gray-50 to-rose-50/30 relative overflow-hidden order-6">
         <div className="absolute inset-0 opacity-5 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
         <div className="absolute top-0 left-0 w-48 h-48 sm:w-80 sm:h-80 rounded-full bg-gradient-to-br from-rose-200/20 to-violet-200/20 -translate-y-24 -translate-x-24"></div>
 
@@ -651,8 +653,8 @@ export default function Home() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-blue-600  to-gray-300 text-white relative overflow-hidden">
+      {/* CTA Section - Desktop: order 7, Mobile: order 7 */}
+      <section className="py-16 sm:py-20 lg:py-24 bg-gradient-to-br from-blue-600  to-gray-300 text-white relative overflow-hidden order-7">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 left-0 w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiPjxkZWZzPjxwYXR0ZXJuIGlkPSJwYXR0ZXJuIiB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHBhdHRlcm5Vbml0cz0idXNlclNwYWNlT25Vc2UiIHBhdHRlcm5UcmFuc2Zvcm09InJvdGF0ZSg0NSkiPjxyZWN0IHdpZHRoPSIyMCIgaGVpZ2h0PSIyMCIgZmlsbD0icmdiYSgyNTUsMjU1LDI1NSwwLjA1KSIvPjwvcGF0dGVybj48L2RlZnM+PHJlY3Qgd2lkdGg9IjEwMCUiIGhlaWdodD0iMTAwJSIgZmlsbD0idXJsKCNwYXR0ZXJuKSIvPjwvc3ZnPg==')]"></div>
         </div>

@@ -110,7 +110,7 @@ const StudentFeeManager = () => {
       setLoading(true);
       setDebugInfo("");
       try {
-        const studentClass = selectedStudent.class;
+        const studentClass = selectedStudent.class?.toString().trim();
         const normalizedStudentClass = normalizeClass(studentClass);
 
         console.log(
@@ -127,7 +127,8 @@ const StudentFeeManager = () => {
         try {
           const feeStructuresQuery = query(
             collection(db, "fees"),
-            where("class", "==", studentClass)
+            where("class", "==", studentClass) || where("class", "==", Number(studentClass))
+
           );
           const feeStructuresSnapshot = await getDocs(feeStructuresQuery);
 
@@ -185,10 +186,10 @@ const StudentFeeManager = () => {
         }
 
         // Method 4: Final fallback - client-side filtering with normalization
+        // Method 4: Final fallback - normalize both sides and compare loosely
         if (feeStructuresData.length === 0) {
           try {
-            const allFeesQuery = query(collection(db, "fees"));
-            const allFeesSnapshot = await getDocs(allFeesQuery);
+            const allFeesSnapshot = await getDocs(collection(db, "fees"));
             const allFees = allFeesSnapshot.docs.map((doc) => ({
               id: doc.id,
               ...doc.data(),
@@ -196,21 +197,24 @@ const StudentFeeManager = () => {
 
             feeStructuresData = allFees.filter((fee) => {
               const feeClass = normalizeClass(fee.class);
-              return feeClass === normalizedStudentClass;
+              return (
+                feeClass.toString().trim() === normalizedStudentClass.toString().trim() ||
+                Number(feeClass) === Number(normalizedStudentClass)
+              );
             });
 
             if (feeStructuresData.length > 0) {
-              foundWithMethod = "client-side filtering with normalization";
+              foundWithMethod = "loose normalized match";
             }
           } catch (error) {
             console.log("Client-side filtering failed");
           }
         }
 
+
         setFeeStructures(feeStructuresData);
         setDebugInfo(
-          `Found ${feeStructuresData.length} fees using: ${
-            foundWithMethod || "no method worked"
+          `Found ${feeStructuresData.length} fees using: ${foundWithMethod || "no method worked"
           }`
         );
 
@@ -471,11 +475,10 @@ const StudentFeeManager = () => {
                     </p>
                   </div>
                   <div
-                    className={`rounded-lg p-4 text-center ${
-                      feeSummary.paymentStatus === "Paid"
+                    className={`rounded-lg p-4 text-center ${feeSummary.paymentStatus === "Paid"
                         ? "bg-green-50 text-green-800"
                         : "bg-red-50 text-red-800"
-                    }`}
+                      }`}
                   >
                     <p className="text-sm">Payment Status</p>
                     <p className="text-2xl font-bold">
@@ -605,13 +608,12 @@ const StudentFeeManager = () => {
                                 </td>
                                 <td className="border border-gray-300 px-4 py-2 capitalize">
                                   <span
-                                    className={`px-2 py-1 rounded-full text-xs ${
-                                      payment.status === "paid"
+                                    className={`px-2 py-1 rounded-full text-xs ${payment.status === "paid"
                                         ? "bg-green-100 text-green-800"
                                         : payment.status === "pending"
-                                        ? "bg-yellow-100 text-yellow-800"
-                                        : "bg-red-100 text-red-800"
-                                    }`}
+                                          ? "bg-yellow-100 text-yellow-800"
+                                          : "bg-red-100 text-red-800"
+                                      }`}
                                   >
                                     {payment.status}
                                   </span>

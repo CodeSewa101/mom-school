@@ -19,7 +19,10 @@ import {
   BookOpen,
   Calendar,
   Phone,
-  Mail
+  Mail,
+  ChevronDown,
+  ChevronUp,
+  Copy
 } from 'lucide-react';
 import { 
   collection, 
@@ -51,6 +54,11 @@ export default function StudentManagement() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
+  // New State for UI Toggles
+  const [sameAddress, setSameAddress] = useState(false);
+  const [showSiblings, setShowSiblings] = useState(false);
+  const [siblings, setSiblings] = useState([]);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
@@ -67,36 +75,68 @@ export default function StudentManagement() {
     '2030-31'
   ];
 
-  const classes = ["Nursery",
-    "LKG",
-    "UKG", '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
+  const classes = ["Nursery", "LKG", "UKG", '1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
   const sections = ['A', 'B', 'C', 'D'];
+  const castes = ['GEN', 'SC', 'ST', 'OBC', 'SEBC'];
 
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
-    studentClass: '', // Changed from 'class'
+    phone: '', 
+    class: '', 
     section: '',
-    rollNo: '', // Changed from 'rollNumber'
+    rollNo: '', 
     birthDate: '',
-    address: '',
-    parentName: '',
-    parentPhone: '',
     photo: '',
     academicYear: academicYears[0],
     admissionDate: '',
     bloodGroup: '',
-    emergencyContact: '',
     password: '',
-    confirmPassword: ''
+    confirmPassword: '',
+    
+    // New Fields
+    height: '',
+    weight: '',
+    caste: '',
+    aadharNo: '',
+    transportMode: '',
+    
+    // Permanent Address
+    permAt: '',
+    permPost: '',
+    permVia: '',
+    permDist: '',
+    permMobile: '',
+    
+    // Correspondence Address
+    corrAt: '',
+    corrPost: '',
+    corrVia: '',
+    corrDist: '',
+    corrMobile: '',
+    
+    // Father Info
+    fatherName: '',
+    fatherAge: '',
+    fatherDesignation: '',
+    fatherOfficeAddress: '',
+    fatherAnnualIncome: '',
+    fatherMobile: '',
+    
+    // Mother Info
+    motherName: '',
+    motherAge: '',
+    motherDesignation: '',
+    motherOfficeAddress: '',
+    motherAnnualIncome: '',
+    motherMobile: '',
   });
 
   const [formErrors, setFormErrors] = useState({
     phone: '',
     birthDate: '',
-    parentName: '',
-    parentPhone: '',
+    fatherName: '', // Updated from parentName
+    fatherMobile: '', // Updated from parentPhone
     password: '',
     confirmPassword: ''
   });
@@ -108,10 +148,10 @@ export default function StudentManagement() {
 
   useEffect(() => {
     filterStudents();
-    setCurrentPage(1); // Reset to first page when filters change
+    setCurrentPage(1); 
   }, [students, searchTerm, filterClass]);
 
-  // Calculate pagination values
+  // Pagination Logic
   const totalPages = Math.ceil(filteredStudents.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -122,7 +162,6 @@ export default function StudentManagement() {
     pageNumbers.push(i);
   }
 
-  // Only show a subset of page numbers if there are too many
   const getDisplayedPageNumbers = () => {
     const maxVisiblePages = 5;
     if (totalPages <= maxVisiblePages) return pageNumbers;
@@ -188,13 +227,13 @@ export default function StudentManagement() {
     if (searchTerm) {
       filtered = filtered.filter(student =>
         student.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) || // Changed from rollNumber
+        student.rollNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
         student.email.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     if (filterClass) {
-      filtered = filtered.filter(student => student.studentClass === filterClass); // Changed from class
+      filtered = filtered.filter(student => student.class === filterClass);
     }
 
     setFilteredStudents(filtered);
@@ -202,15 +241,25 @@ export default function StudentManagement() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    
+    setFormData(prev => {
+      const newData = { ...prev, [name]: value };
+      
+      // If same address is checked and we edit permanent address, update correspondence
+      if (sameAddress) {
+        if (name === 'permAt') newData.corrAt = value;
+        if (name === 'permPost') newData.corrPost = value;
+        if (name === 'permVia') newData.corrVia = value;
+        if (name === 'permDist') newData.corrDist = value;
+        if (name === 'permMobile') newData.corrMobile = value;
+      }
+      return newData;
+    });
 
-    // Clear error when user starts typing
+    // Clear errors
     if (name === 'password' || name === 'confirmPassword' || 
         name === 'phone' || name === 'birthDate' || 
-        name === 'parentName' || name === 'parentPhone') {
+        name === 'fatherName' || name === 'fatherMobile') {
       setFormErrors(prev => ({
         ...prev,
         [name]: ''
@@ -218,32 +267,53 @@ export default function StudentManagement() {
     }
   };
 
+  const handleSameAddressChange = (e) => {
+    const isChecked = e.target.checked;
+    setSameAddress(isChecked);
+    
+    if (isChecked) {
+      setFormData(prev => ({
+        ...prev,
+        corrAt: prev.permAt,
+        corrPost: prev.permPost,
+        corrVia: prev.permVia,
+        corrDist: prev.permDist,
+        corrMobile: prev.permMobile,
+      }));
+    } else {
+      // Optional: Clear correspondence when unchecked? 
+      // Usually user expects it to stay until they edit it. Keeping as is.
+    }
+  };
+
+  // Sibling Logic
+  const addSibling = () => {
+    setSiblings([...siblings, { name: '', age: '', institute: '', standard: '' }]);
+  };
+
+  const removeSibling = (index) => {
+    const newSiblings = siblings.filter((_, i) => i !== index);
+    setSiblings(newSiblings);
+  };
+
+  const handleSiblingChange = (index, field, value) => {
+    const newSiblings = [...siblings];
+    newSiblings[index][field] = value;
+    setSiblings(newSiblings);
+  };
+
   const validateForm = () => {
     const errors = {};
     
-    // Validate required fields
-    if (!formData.phone.trim()) {
-      errors.phone = 'Phone number is required';
-    }
+    if (!formData.phone.trim()) errors.phone = 'Phone number is required';
+    if (!formData.birthDate) errors.birthDate = 'Birth date is required';
+    if (!formData.fatherName.trim()) errors.fatherName = 'Father name is required';
+    if (!formData.fatherMobile.trim()) errors.fatherMobile = 'Father mobile is required';
     
-    if (!formData.birthDate) {
-      errors.birthDate = 'Birth date is required';
-    }
-    
-    if (!formData.parentName.trim()) {
-      errors.parentName = 'Parent/Guardian name is required';
-    }
-    
-    if (!formData.parentPhone.trim()) {
-      errors.parentPhone = 'Parent phone number is required';
-    }
-    
-    // Only validate password fields when adding a new student
     if (!editingStudent) {
       if (formData.password.length < 6) {
         errors.password = 'Password must be at least 6 characters';
       }
-      
       if (formData.password !== formData.confirmPassword) {
         errors.confirmPassword = 'Passwords do not match';
       }
@@ -257,17 +327,37 @@ export default function StudentManagement() {
     const file = e.target.files[0];
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please upload an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
     setUploading(true);
     try {
-      const photoUrl = await uploadToCloudinary(file);
-      setFormData(prev => ({
-        ...prev,
-        photo: photoUrl
-      }));
-      toast.success('Photo uploaded successfully');
+      const uploadResult = await uploadToCloudinary(file);
+      const photoUrl = uploadResult.url;
+      
+      if (photoUrl && photoUrl.trim() !== '') {
+        setFormData(prev => ({ ...prev, photo: photoUrl }));
+        toast.success('Photo uploaded successfully');
+      } else {
+        throw new Error('Invalid photo URL returned');
+      }
     } catch (error) {
       console.error('Error uploading photo:', error);
       toast.error('Failed to upload photo');
+      
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData(prev => ({ ...prev, photo: reader.result }));
+        toast.success('Photo loaded (local preview only)');
+      };
+      reader.readAsDataURL(file);
     } finally {
       setUploading(false);
     }
@@ -282,9 +372,11 @@ export default function StudentManagement() {
     }
     
     try {
-      const studentData = { ...formData };
+      const studentData = { 
+        ...formData,
+        siblings: siblings // Include siblings array
+      };
       
-      // Remove password fields if editing (we don't want to update password unless specifically changing it)
       if (editingStudent) {
         delete studentData.password;
         delete studentData.confirmPassword;
@@ -295,7 +387,6 @@ export default function StudentManagement() {
         });
         toast.success('Student updated successfully');
       } else {
-        // For new students, include password but remove confirmPassword
         delete studentData.confirmPassword;
         
         await addDoc(collection(db, 'students'), {
@@ -319,9 +410,18 @@ export default function StudentManagement() {
     setEditingStudent(student);
     setFormData({
       ...student,
-      password: '', // Clear password fields when editing
+      password: '',
       confirmPassword: ''
     });
+    setSiblings(student.siblings || []); // Load siblings or empty array
+    
+    // Check if addresses are same to toggle box
+    if (student.permAt === student.corrAt && student.permAt !== '' && student.permAt !== undefined) {
+        setSameAddress(true);
+    } else {
+        setSameAddress(false);
+    }
+
     setShowAddModal(true);
   };
 
@@ -341,31 +441,19 @@ export default function StudentManagement() {
 
   const resetForm = () => {
     setFormData({
-      name: '',
-      email: '',
-      phone: '',
-      studentClass: '', // Changed from 'class'
-      section: '',
-      rollNo: '', // Changed from 'rollNumber'
-      birthDate: '',
-      address: '',
-      parentName: '',
-      parentPhone: '',
-      photo: '',
-      academicYear: academicYears[0],
-      admissionDate: '',
-      bloodGroup: '',
-      emergencyContact: '',
-      password: '',
-      confirmPassword: ''
+      name: '', email: '', phone: '', class: '', section: '', rollNo: '', 
+      birthDate: '', photo: '', academicYear: academicYears[0], 
+      admissionDate: '', bloodGroup: '', password: '', confirmPassword: '',
+      height: '', weight: '', caste: '', aadharNo: '', transportMode: '',
+      permAt: '', permPost: '', permVia: '', permDist: '', permMobile: '',
+      corrAt: '', corrPost: '', corrVia: '', corrDist: '', corrMobile: '',
+      fatherName: '', fatherAge: '', fatherDesignation: '', fatherOfficeAddress: '', fatherAnnualIncome: '', fatherMobile: '',
+      motherName: '', motherAge: '', motherDesignation: '', motherOfficeAddress: '', motherAnnualIncome: '', motherMobile: '',
     });
+    setSiblings([]);
+    setSameAddress(false);
     setFormErrors({
-      phone: '',
-      birthDate: '',
-      parentName: '',
-      parentPhone: '',
-      password: '',
-      confirmPassword: ''
+      phone: '', birthDate: '', fatherName: '', fatherMobile: '', password: '', confirmPassword: ''
     });
     setEditingStudent(null);
     setShowAddModal(false);
@@ -379,23 +467,31 @@ export default function StudentManagement() {
     try {
       const batch = [];
       students.forEach(student => {
-        const currentClass = parseInt(student.studentClass); // Changed from class
+        const classIndex = classes.indexOf(student.class);
+        let nextClass = null;
+
+        if (classIndex !== -1 && classIndex < classes.length - 1) {
+          nextClass = classes[classIndex + 1];
+        } else {
+          const currentNum = parseInt(student.class);
+          if (!isNaN(currentNum) && currentNum < 12) {
+            nextClass = (currentNum + 1).toString();
+          }
+        }
+
         const studentYearIndex = academicYears.indexOf(student.academicYear);
         const updates = {
           updatedAt: new Date()
         };
         
-        // Promote class if not already in the highest class (12)
-        if (currentClass < 12) {
-          updates.studentClass = (currentClass + 1).toString(); // Changed from class
+        if (nextClass) {
+          updates.class = nextClass;
         }
         
-        // Promote academic year if not already at the last year
         if (studentYearIndex < academicYears.length - 1) {
           updates.academicYear = academicYears[studentYearIndex + 1];
         }
         
-        // Only update if either class or year was promoted
         if (Object.keys(updates).length > 1) {
           batch.push(
             updateDoc(doc(db, 'students', student.id), updates)
@@ -467,7 +563,7 @@ export default function StudentManagement() {
           </div>
         </div>
 
-        {/* Stats Cards - Updated with different colors */}
+        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
           <div className="bg-gradient-to-br from-blue-500 to-indigo-600 p-5 rounded-xl shadow-lg text-white">
             <div className="flex items-center">
@@ -550,27 +646,13 @@ export default function StudentManagement() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Student
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Class & Section
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Roll No {/* Changed from Roll Number */}
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Academic Year
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Contact
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Parent
-                  </th>
-                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Class & Section</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roll No</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Academic Year</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Parent (Father)</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -594,14 +676,14 @@ export default function StudentManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                          Class {student.studentClass} {/* Changed from class */}
+                          Class {student.class}
                         </span>
                         <span className="ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                          Section {student.section}
+                          Sec {student.section}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900">
-                        {student.rollNo} {/* Changed from rollNumber */}
+                        {student.rollNo}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -612,8 +694,8 @@ export default function StudentManagement() {
                         {student.phone}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{student.parentName}</div>
-                        <div className="text-sm text-gray-500">{student.parentPhone}</div>
+                        <div className="text-sm font-medium text-gray-900">{student.fatherName || student.parentName}</div>
+                        <div className="text-sm text-gray-500">{student.fatherMobile || student.parentPhone}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -667,58 +749,29 @@ export default function StudentManagement() {
               </div>
               
               <div className="flex items-center space-x-1">
-                {/* First Page Button */}
-                <button
-                  onClick={goToFirstPage}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="First page"
-                >
+                <button onClick={goToFirstPage} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <ChevronsLeft className="h-4 w-4" />
                 </button>
-                
-                {/* Previous Page Button */}
-                <button
-                  onClick={goToPrevPage}
-                  disabled={currentPage === 1}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Previous page"
-                >
+                <button onClick={goToPrevPage} disabled={currentPage === 1} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <ChevronLeft className="h-4 w-4" />
                 </button>
                 
-                {/* Page Number Buttons */}
                 {getDisplayedPageNumbers().map((pageNum) => (
                   <button
                     key={pageNum}
                     onClick={() => goToPage(pageNum)}
                     className={`w-10 h-10 rounded-lg border transition-colors ${
-                      currentPage === pageNum
-                        ? 'bg-blue-500 text-white border-blue-500'
-                        : 'border-gray-200 hover:bg-gray-50'
+                      currentPage === pageNum ? 'bg-blue-500 text-white border-blue-500' : 'border-gray-200 hover:bg-gray-50'
                     }`}
                   >
                     {pageNum}
                   </button>
                 ))}
                 
-                {/* Next Page Button */}
-                <button
-                  onClick={goToNextPage}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Next page"
-                >
+                <button onClick={goToNextPage} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <ChevronRight className="h-4 w-4" />
                 </button>
-                
-                {/* Last Page Button */}
-                <button
-                  onClick={goToLastPage}
-                  disabled={currentPage === totalPages}
-                  className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                  title="Last page"
-                >
+                <button onClick={goToLastPage} disabled={currentPage === totalPages} className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
                   <ChevronsRight className="h-4 w-4" />
                 </button>
               </div>
@@ -729,336 +782,332 @@ export default function StudentManagement() {
         {/* Add/Edit Modal */}
         {showAddModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 animate-fadeIn">
-            <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
+            <div className="bg-white rounded-xl max-w-6xl w-full max-h-[90vh] overflow-y-auto animate-scaleIn">
               <div className="p-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  {editingStudent ? (
-                    <>
-                      <Edit className="h-6 w-6 text-blue-600" />
-                      Edit Student
-                    </>
-                  ) : (
-                    <>
-                      <UserPlus className="h-6 w-6 text-blue-600" />
-                      Add New Student
-                    </>
-                  )}
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2 border-b pb-4">
+                  {editingStudent ? <><Edit className="h-6 w-6 text-blue-600" /> Edit Student</> : <><UserPlus className="h-6 w-6 text-blue-600" /> Add New Student</>}
                 </h2>
                 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Photo Upload */}
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Student Photo
-                      </label>
-                      <div className="flex items-center space-x-4">
-                        {formData.photo && (
-                          <img
-                            src={formData.photo}
-                            alt="Student"
-                            className="h-20 w-20 rounded-full object-cover border-2 border-white shadow-sm"
-                          />
-                        )}
-                        <div>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handlePhotoUpload}
-                            className="hidden"
-                            id="photo-upload"
-                          />
-                          <label
-                            htmlFor="photo-upload"
-                            className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2.5 rounded-lg hover:shadow-md transition-all cursor-pointer flex items-center space-x-2 shadow-sm"
-                          >
-                            <Upload className="h-4 w-4" />
-                            <span>{uploading ? 'Uploading...' : 'Upload Photo'}</span>
-                          </label>
+                <form onSubmit={handleSubmit} className="space-y-8">
+                  
+                  {/* Section 1: Basic Information */}
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <Users className="h-5 w-5 text-indigo-500"/> Basic Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        {/* Photo Upload - spans row on small, 1 col on large */}
+                        <div className="md:col-span-2 lg:col-span-4 flex justify-center mb-4">
+                             <div className="flex flex-col items-center space-y-4">
+                                {formData.photo && (
+                                <img src={formData.photo} alt="Student" className="h-24 w-24 rounded-full object-cover border-2 border-blue-100 shadow-md" />
+                                )}
+                                <label htmlFor="photo-upload" className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg cursor-pointer hover:bg-blue-100 transition-colors flex items-center gap-2 text-sm font-medium">
+                                    <Upload className="h-4 w-4" /> {uploading ? 'Uploading...' : 'Upload Photo'}
+                                </label>
+                                <input type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" id="photo-upload" />
+                            </div>
                         </div>
-                      </div>
-                    </div>
 
-                    {/* Basic Information */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Full Name *
-                      </label>
-                      <input
-                        type="text"
-                        name="name"
-                        value={formData.name}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Email
-                      </label>
-                      <input
-                        type="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Phone *
-                      </label>
-                      <input
-                        type="tel"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                      {formErrors.phone && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Birth Date *
-                      </label>
-                      <input
-                        type="date"
-                        name="birthDate"
-                        value={formData.birthDate}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                      {formErrors.birthDate && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.birthDate}</p>
-                      )}
-                    </div>
-
-                    {/* Password Fields - Only show for new students */}
-                    {!editingStudent && (
-                      <>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Password *
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showPassword ? "text" : "password"}
-                              name="password"
-                              value={formData.password}
-                              onChange={handleInputChange}
-                              required
-                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-10"
-                            />
-                            <button
-                              type="button"
-                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                              onClick={() => setShowPassword(!showPassword)}
-                            >
-                              {showPassword ? (
-                                <EyeOff className="h-4 w-4 text-gray-400" />
-                              ) : (
-                                <Eye className="h-4 w-4 text-gray-400" />
-                              )}
-                            </button>
-                          </div>
-                          {formErrors.password && (
-                            <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>
-                          )}
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Full Name *</label>
+                            <input type="text" name="name" value={formData.name} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                            <input type="email" name="email" value={formData.email} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Confirm Password *
-                          </label>
-                          <div className="relative">
-                            <input
-                              type={showConfirmPassword ? "text" : "password"}
-                              name="confirmPassword"
-                              value={formData.confirmPassword}
-                              onChange={handleInputChange}
-                              required
-                              className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors pr-10"
-                            />
-                            <button
-                              type="button"
-                              className="absolute inset-y-0 right-0 pr-3 flex items-center"
-                              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            >
-                              {showConfirmPassword ? (
-                                <EyeOff className="h-4 w-4 text-gray-400" />
-                              ) : (
-                                <Eye className="h-4 w-4 text-gray-400" />
-                              )}
-                            </button>
-                          </div>
-                          {formErrors.confirmPassword && (
-                            <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>
-                          )}
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Birth Date *</label>
+                            <input type="date" name="birthDate" value={formData.birthDate} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
                         </div>
-                      </>
-                    )}
-
-                    {/* Academic Information */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Class *
-                      </label>
-                      <select
-                        name="studentClass" // Changed from class
-                        value={formData.studentClass} // Changed from class
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        <option value="">Select Class</option>
-                        {classes.map(cls => (
-                          <option key={cls} value={cls}>Class {cls}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Section *
-                      </label>
-                      <select
-                        name="section"
-                        value={formData.section}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        <option value="">Select Section</option>
-                        {sections.map(section => (
-                          <option key={section} value={section}>Section {section}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Roll No * {/* Changed from Roll Number */}
-                      </label>
-                      <input
-                        type="text"
-                        name="rollNo" // Changed from rollNumber
-                        value={formData.rollNo} // Changed from rollNumber
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Academic Year *
-                      </label>
-                      <select
-                        name="academicYear"
-                        value={formData.academicYear}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        {academicYears.map(year => (
-                          <option key={year} value={year}>{year}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    {/* Parent Information */}
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Parent/Guardian Name *
-                      </label>
-                      <input
-                        type="text"
-                        name="parentName"
-                        value={formData.parentName}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                      {formErrors.parentName && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.parentName}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Parent Phone *
-                      </label>
-                      <input
-                        type="tel"
-                        name="parentPhone"
-                        value={formData.parentPhone}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                      {formErrors.parentPhone && (
-                        <p className="mt-1 text-sm text-red-600">{formErrors.parentPhone}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Blood Group
-                      </label>
-                      <select
-                        name="bloodGroup"
-                        value={formData.bloodGroup}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      >
-                        <option value="">Select Blood Group</option>
-                        <option value="A+">A+</option>
-                        <option value="A-">A-</option>
-                        <option value="B+">B+</option>
-                        <option value="B-">B-</option>
-                        <option value="AB+">AB+</option>
-                        <option value="AB-">AB-</option>
-                        <option value="O+">O+</option>
-                        <option value="O-">O-</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Emergency Contact
-                      </label>
-                      <input
-                        type="tel"
-                        name="emergencyContact"
-                        value={formData.emergencyContact}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Address
-                      </label>
-                      <textarea
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        rows={3}
-                        className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-                      />
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Aadhar No.</label>
+                            <input type="text" name="aadharNo" value={formData.aadharNo} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" placeholder="XXXX-XXXX-XXXX" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Caste</label>
+                            <select name="caste" value={formData.caste} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <option value="">Select Caste</option>
+                                {castes.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
+                            <select name="bloodGroup" value={formData.bloodGroup} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <option value="">Select</option>
+                                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Height (cm)</label>
+                            <input type="number" name="height" value={formData.height} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Weight (kg)</label>
+                            <input type="number" name="weight" value={formData.weight} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
+                        </div>
                     </div>
                   </div>
 
-                  <div className="flex justify-end space-x-4 pt-4 border-t border-gray-200">
+                  {/* Section 2: Academic Details */}
+                  <div className="pt-4 border-t">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <BookOpen className="h-5 w-5 text-indigo-500"/> Academic Details
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Class *</label>
+                            <select name="class" value={formData.class} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <option value="">Select Class</option>
+                                {classes.map(c => <option key={c} value={c}>Class {c}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Section *</label>
+                            <select name="section" value={formData.section} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <option value="">Select Section</option>
+                                {sections.map(s => <option key={s} value={s}>Section {s}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Roll No *</label>
+                            <input type="text" name="rollNo" value={formData.rollNo} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Academic Year *</label>
+                            <select name="academicYear" value={formData.academicYear} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                {academicYears.map(y => <option key={y} value={y}>{y}</option>)}
+                            </select>
+                        </div>
+                        <div>
+                             <label className="block text-sm font-medium text-gray-700 mb-1">Mode of Transport</label>
+                             <select name="transportMode" value={formData.transportMode} onChange={handleInputChange} className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors">
+                                <option value="">Select Mode</option>
+                                <option value="School Bus">School Bus</option>
+                                <option value="Parent">Parent</option>
+                             </select>
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* Section 3: Contact & Address */}
+                  <div className="pt-4 border-t">
+                     <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <Phone className="h-5 w-5 text-indigo-500"/> Contact & Address
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Permanent Address */}
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                            <h4 className="font-semibold text-gray-700 mb-3">Permanent Address</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">At (Village/Locality)</label>
+                                    <input type="text" name="permAt" value={formData.permAt} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Post</label>
+                                    <input type="text" name="permPost" value={formData.permPost} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Via</label>
+                                    <input type="text" name="permVia" value={formData.permVia} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Dist</label>
+                                    <input type="text" name="permDist" value={formData.permDist} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Mobile No.</label>
+                                    <input type="tel" name="permMobile" value={formData.permMobile} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Correspondence Address */}
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 relative">
+                            <h4 className="font-semibold text-gray-700 mb-3">Correspondence Address</h4>
+                            <div className="absolute top-4 right-4 flex items-center gap-2">
+                                <input type="checkbox" id="sameAddress" checked={sameAddress} onChange={handleSameAddressChange} className="rounded text-blue-600 focus:ring-blue-500" />
+                                <label htmlFor="sameAddress" className="text-xs text-gray-600 cursor-pointer select-none">Same as Permanent</label>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="col-span-2">
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">At (Village/Locality)</label>
+                                    <input type="text" name="corrAt" value={formData.corrAt} onChange={handleInputChange} disabled={sameAddress} className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm ${sameAddress ? 'bg-gray-100' : ''}`} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Post</label>
+                                    <input type="text" name="corrPost" value={formData.corrPost} onChange={handleInputChange} disabled={sameAddress} className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm ${sameAddress ? 'bg-gray-100' : ''}`} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Via</label>
+                                    <input type="text" name="corrVia" value={formData.corrVia} onChange={handleInputChange} disabled={sameAddress} className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm ${sameAddress ? 'bg-gray-100' : ''}`} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Dist</label>
+                                    <input type="text" name="corrDist" value={formData.corrDist} onChange={handleInputChange} disabled={sameAddress} className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm ${sameAddress ? 'bg-gray-100' : ''}`} />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600 mb-1">Mobile No.</label>
+                                    <input type="tel" name="corrMobile" value={formData.corrMobile} onChange={handleInputChange} disabled={sameAddress} className={`w-full px-3 py-2 border border-gray-200 rounded-lg text-sm ${sameAddress ? 'bg-gray-100' : ''}`} />
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* Personal Student Phone (kept separate as per original requirement of 'Phone *') */}
+                        <div className="col-span-1 lg:col-span-2">
+                             <label className="block text-sm font-medium text-gray-700 mb-1"> Phone (for Login/Alerts) *</label>
+                             <input type="tel" name="phone" value={formData.phone} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 transition-colors" />
+                             {formErrors.phone && <p className="mt-1 text-sm text-red-600">{formErrors.phone}</p>}
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* Section 4: Family Information */}
+                  <div className="pt-4 border-t">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <Users className="h-5 w-5 text-indigo-500"/> Family Information
+                    </h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        {/* Father */}
+                        <div className="space-y-3 bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+                             <h4 className="font-semibold text-blue-800 border-b border-blue-200 pb-2">Father's Details</h4>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Name *</label>
+                                <input type="text" name="fatherName" value={formData.fatherName} onChange={handleInputChange} required className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Age</label>
+                                    <input type="number" name="fatherAge" value={formData.fatherAge} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Mobile No *</label>
+                                    <input type="tel" name="fatherMobile" value={formData.fatherMobile} onChange={handleInputChange} required className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Designation</label>
+                                <input type="text" name="fatherDesignation" value={formData.fatherDesignation} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Office Address</label>
+                                <input type="text" name="fatherOfficeAddress" value={formData.fatherOfficeAddress} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Annual Income</label>
+                                <input type="text" name="fatherAnnualIncome" value={formData.fatherAnnualIncome} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                        </div>
+
+                        {/* Mother */}
+                         <div className="space-y-3 bg-pink-50/50 p-4 rounded-xl border border-pink-100">
+                             <h4 className="font-semibold text-pink-800 border-b border-pink-200 pb-2">Mother's Details</h4>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Name</label>
+                                <input type="text" name="motherName" value={formData.motherName} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Age</label>
+                                    <input type="number" name="motherAge" value={formData.motherAge} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-medium text-gray-600">Mobile No</label>
+                                    <input type="tel" name="motherMobile" value={formData.motherMobile} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                                </div>
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Designation</label>
+                                <input type="text" name="motherDesignation" value={formData.motherDesignation} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Office Address</label>
+                                <input type="text" name="motherOfficeAddress" value={formData.motherOfficeAddress} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                             <div>
+                                <label className="block text-xs font-medium text-gray-600">Annual Income</label>
+                                <input type="text" name="motherAnnualIncome" value={formData.motherAnnualIncome} onChange={handleInputChange} className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-lg text-sm" />
+                             </div>
+                        </div>
+                    </div>
+                  </div>
+
+                  {/* Section 5: Sibling Details (Collapsible) */}
+                  <div className="pt-4 border-t">
+                      <button type="button" onClick={() => setShowSiblings(!showSiblings)} className="flex items-center justify-between w-full text-lg font-semibold text-gray-800 mb-2 hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                          <div className="flex items-center gap-2">
+                              <Users className="h-5 w-5 text-indigo-500"/> Brother/Sister Details
+                          </div>
+                          {showSiblings ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                      </button>
+                      
+                      {showSiblings && (
+                          <div className="space-y-4 pl-2 pr-2 animate-fadeIn">
+                              {siblings.map((sibling, index) => (
+                                  <div key={index} className="flex flex-wrap gap-4 items-end bg-gray-50 p-3 rounded-lg border border-gray-200">
+                                      <div className="flex-1 min-w-[150px]">
+                                          <label className="block text-xs text-gray-500">Name</label>
+                                          <input type="text" value={sibling.name} onChange={(e) => handleSiblingChange(index, 'name', e.target.value)} className="w-full px-3 py-1.5 border rounded-md text-sm" />
+                                      </div>
+                                      <div className="w-20">
+                                          <label className="block text-xs text-gray-500">Age</label>
+                                          <input type="number" value={sibling.age} onChange={(e) => handleSiblingChange(index, 'age', e.target.value)} className="w-full px-3 py-1.5 border rounded-md text-sm" />
+                                      </div>
+                                      <div className="flex-1 min-w-[150px]">
+                                          <label className="block text-xs text-gray-500">Institute Name</label>
+                                          <input type="text" value={sibling.institute} onChange={(e) => handleSiblingChange(index, 'institute', e.target.value)} className="w-full px-3 py-1.5 border rounded-md text-sm" />
+                                      </div>
+                                      <div className="w-24">
+                                          <label className="block text-xs text-gray-500">Standard</label>
+                                          <input type="text" value={sibling.standard} onChange={(e) => handleSiblingChange(index, 'standard', e.target.value)} className="w-full px-3 py-1.5 border rounded-md text-sm" />
+                                      </div>
+                                      <button type="button" onClick={() => removeSibling(index)} className="p-2 text-red-500 hover:bg-red-50 rounded-md">
+                                          <Trash2 className="h-4 w-4" />
+                                      </button>
+                                  </div>
+                              ))}
+                              <button type="button" onClick={addSibling} className="text-sm text-blue-600 font-medium hover:underline flex items-center gap-1">
+                                  <Plus className="h-4 w-4" /> Add Sibling
+                              </button>
+                          </div>
+                      )}
+                  </div>
+
+                  {/* Section 6: Password (Only for New) */}
+                  {!editingStudent && (
+                      <div className="pt-4 border-t">
+                        <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                            <LockIcon className="h-5 w-5 text-indigo-500"/> Security
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                                <div className="relative">
+                                    <input type={showPassword ? "text" : "password"} name="password" value={formData.password} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 pr-10" />
+                                    <button type="button" className="absolute inset-y-0 right-0 pr-3 flex items-center" onClick={() => setShowPassword(!showPassword)}>
+                                        {showPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                                    </button>
+                                </div>
+                                {formErrors.password && <p className="mt-1 text-sm text-red-600">{formErrors.password}</p>}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
+                                <div className="relative">
+                                    <input type={showConfirmPassword ? "text" : "password"} name="confirmPassword" value={formData.confirmPassword} onChange={handleInputChange} required className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 pr-10" />
+                                    <button type="button" className="absolute inset-y-0 right-0 pr-3 flex items-center" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                        {showConfirmPassword ? <EyeOff className="h-4 w-4 text-gray-400" /> : <Eye className="h-4 w-4 text-gray-400" />}
+                                    </button>
+                                </div>
+                                {formErrors.confirmPassword && <p className="mt-1 text-sm text-red-600">{formErrors.confirmPassword}</p>}
+                            </div>
+                        </div>
+                      </div>
+                  )}
+
+                  <div className="flex justify-end space-x-4 pt-6 border-t border-gray-200 sticky bottom-0 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
                     <button
                       type="button"
                       onClick={resetForm}
@@ -1098,4 +1147,11 @@ export default function StudentManagement() {
       `}</style>
     </div>
   );
+}
+
+// Helper icon component for the Security section
+function LockIcon({ className }) {
+    return (
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    )
 }

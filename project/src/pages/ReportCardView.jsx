@@ -13,20 +13,21 @@ const ReportCardView = () => {
 
   // Class options for dropdown - matching StudentManagement format
   const classOptions = [
-    "Pre-K",
-    "K",
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
+    "Nursery",
+  "LKG",
+  "UKG",
+  "1",
+  "2",
+  "3",
+  "4",
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "11",
+  "12",
   ];
 
   const handleInputChange = (e) => {
@@ -97,9 +98,9 @@ const ReportCardView = () => {
 
   // Function to format class for display
   const formatClassForDisplay = (cls) => {
-    if (cls === "Pre-K" || cls === "K") return cls;
-    if (cls.startsWith("Class ")) return cls; // Already formatted
-    return `Class ${cls}`;
+    if (cls === "Nursery" || cls === "LKG" || cls === "UKG") return cls;
+      return `Class ${cls}`;
+
   };
 
   if (student) {
@@ -151,7 +152,7 @@ const ReportCardView = () => {
                 </p>
                 <p>
                   <span className="font-semibold">Class:</span>{" "}
-                  {formatClassForDisplay(student.class)}
+                  {formatClassForDisplay(student.studentClass)}
                 </p>
               </div>
               <div className="text-right">

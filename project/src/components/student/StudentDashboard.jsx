@@ -47,12 +47,12 @@ const StudentDashboard = () => {
       };
 
       setStudentData(actualStudentData);
-      
+
       // Check if today is the student's birthday and set up countdown
       if (actualStudentData.birthDate) {
         checkBirthday(actualStudentData.birthDate);
       }
-      
+
       fetchStudentData(actualStudentData);
     }
   }, [userData, currentUser]);
@@ -60,36 +60,36 @@ const StudentDashboard = () => {
   const checkBirthday = (birthDateString) => {
     const birthDate = new Date(birthDateString);
     const today = new Date();
-    
+
     // Check if today is the birthday
     if (isToday(birthDate)) {
       setIsBirthday(true);
-      
+
       // Calculate time remaining until end of day
       const endOfToday = endOfDay(today);
       const updateCountdown = () => {
         const now = new Date();
         const diff = endOfToday - now;
-        
+
         if (diff <= 0) {
           setIsBirthday(false);
           clearInterval(interval);
           return;
         }
-        
+
         // Calculate hours and minutes remaining
         const hours = Math.floor(diff / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-        
+
         setTimeRemaining(`${hours}h ${minutes}m`);
       };
-      
+
       // Initial update
       updateCountdown();
-      
+
       // Update every minute
       const interval = setInterval(updateCountdown, 60000);
-      
+
       // Cleanup interval on component unmount
       return () => clearInterval(interval);
     } else {
@@ -110,9 +110,8 @@ const StudentDashboard = () => {
         ),
         getDocs(
           query(
-            collection(db, "results"),
-            where("studentId", "==", student.id),
-            orderBy("semester", "desc"),
+            collection(db, "students"),
+            where("rollNo", "==", student.rollNumber),
             limit(1)
           )
         ),
@@ -179,7 +178,7 @@ const StudentDashboard = () => {
               </div>
             ))}
           </div>
-          
+
           <div className="flex items-center justify-between relative z-10">
             <div className="flex items-center">
               <div className="bg-white bg-opacity-20 p-3 rounded-full mr-4">
@@ -196,7 +195,7 @@ const StudentDashboard = () => {
               <span className="font-medium">{timeRemaining} left</span>
             </div>
           </div>
-          
+
           <style jsx>{`
             @keyframes float {
               0%, 100% { transform: translateY(0) rotate(0deg); }
@@ -264,11 +263,11 @@ const StudentDashboard = () => {
             <div className="ml-4">
               <p className="text-sm font-medium text-gray-600">Average Grade</p>
               <p className="text-xl font-bold text-gray-900">
-                {results.averageGrade || "N/A"}%
+                {results.percentage || "N/A"}{results.percentage ? "%" : ""}
               </p>
               <p className="text-xs text-gray-500">
-                {results.semester
-                  ? `Semester ${results.semester}`
+                {results.percentage
+                  ? `Based on ${results.subjects?.length || 0} subjects`
                   : "No results available"}
               </p>
             </div>
@@ -421,7 +420,7 @@ const StudentDashboard = () => {
                   {studentData.rollNumber}
                 </p>
               </div>
-              
+
               {studentData.birthDate && (
                 <div>
                   <p className="text-sm text-gray-500">Birth Date</p>

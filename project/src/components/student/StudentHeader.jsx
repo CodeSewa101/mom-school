@@ -47,25 +47,35 @@ export default function StudentHeader() {
     };
 
     // Fetch notifications
-    const fetchNotifications = () => {
-      if (currentUser?.uid) {
-        const q = query(
-          collection(db, "notifications"),
-          where("studentId", "==", currentUser.uid),
-          where("date", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // Last 7 days
-        );
+   // Fetch notifications from both notifications collection and notices
+const fetchNotifications = () => {
+  if (currentUser?.uid) {
+    // Query notices collection for general announcements
+    const noticesQuery = query(
+      collection(db, "notices"),
+      where("date", ">=", new Date(Date.now() - 7 * 24 * 60 * 60 * 1000))
+    );
 
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const notifs = [];
-          querySnapshot.forEach((doc) => {
-            notifs.push({ id: doc.id, ...doc.data() });
-          });
-          setNotifications(notifs);
+    const unsubscribe = onSnapshot(noticesQuery, (querySnapshot) => {
+      const notifs = [];
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        notifs.push({
+          id: doc.id,
+          message: `${data.title}: ${data.description}`,
+          date: data.date,
+          read: false,
+          type: 'notice'
         });
+      });
+      // Sort by date descending
+      notifs.sort((a, b) => b.date?.toDate() - a.date?.toDate());
+      setNotifications(notifs);
+    });
 
-        return unsubscribe;
-      }
-    };
+    return unsubscribe;
+  }
+};
 
     // Get today's classes count
     const getTodaysClasses = () => {

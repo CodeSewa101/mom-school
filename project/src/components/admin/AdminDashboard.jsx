@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import {Link} from "react-router-dom";
 import { 
   Users, 
   GraduationCap, 
@@ -189,19 +190,19 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 gap-4">
               <button className="flex items-center space-x-3 p-4 bg-blue-50 rounded-xl hover:bg-blue-100 transition-colors border border-blue-100">
                 <Users className="h-6 w-6 text-blue-600" />
-                <span className="font-medium text-blue-600">Add Student</span>
+                <Link to="students" className="font-medium text-blue-600">Add Student</Link>
               </button>
               <button className="flex items-center space-x-3 p-4 bg-emerald-50 rounded-xl hover:bg-emerald-100 transition-colors border border-emerald-100">
                 <GraduationCap className="h-6 w-6 text-emerald-600" />
-                <span className="font-medium text-emerald-600">Add Teacher</span>
+                <Link to="teachers" className="font-medium text-emerald-600">Add Teacher</Link>
               </button>
               <button className="flex items-center space-x-3 p-4 bg-amber-50 rounded-xl hover:bg-amber-100 transition-colors border border-amber-100">
                 <UserCheck className="h-6 w-6 text-amber-600" />
-                <span className="font-medium text-amber-600">Mark Attendance</span>
+                <Link to="attendance" className="font-medium text-amber-600">Mark Attendance</Link>
               </button>
               <button className="flex items-center space-x-3 p-4 bg-purple-50 rounded-xl hover:bg-purple-100 transition-colors border border-purple-100">
                 <Bell className="h-6 w-6 text-purple-600" />
-                <span className="font-medium text-purple-600">Send Notice</span>
+                <Link to="homework" className="font-medium text-purple-600">Send Notice</Link>
               </button>
             </div>
           </div>

@@ -226,7 +226,7 @@ export default function NotificationManagement() {
                           {notification.title}
                         </h3>
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(notification.priority)}`}>
-                          {notification.priority.toUpperCase()}
+                          {notification.priority}
                         </span>
                         <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
                           {audiences.find(a => a.value === notification.targetAudience)?.label}
