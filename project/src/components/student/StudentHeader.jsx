@@ -148,20 +148,22 @@ const fetchNotifications = () => {
               <span className="text-sm text-gray-700 font-medium">
                 {studentData.name}
               </span>
-              <span className="text-xs text-gray-500">
+              {/* Commented out the Student ID */}
+              {/* <span className="text-xs text-gray-500">
                 ID: {studentData.id}
-              </span>
+              </span> */} 
+             
             </div>
           </div>
 
           {/* Desktop navigation */}
           <div className="hidden md:flex items-center space-x-4">
             {/* Today's classes indicator */}
-            {todayClasses > 0 && (
+            {/* {todayClasses > 0 && (
               <div className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full text-sm">
                 {todayClasses} class{todayClasses > 1 ? "es" : ""} today
               </div>
-            )}
+            )} */}
 
             {/* Notifications */}
             <div className="relative">

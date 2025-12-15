@@ -1,26 +1,22 @@
-import React, {
-  createContext,
-  useContext,
-  useState,
-  useEffect,
-  useCallback,
-} from "react";
-import {
-  signInWithEmailAndPassword,
-  signOut,
-  onAuthStateChanged,
-  createUserWithEmailAndPassword,
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { 
+  signInWithEmailAndPassword, 
+  signOut, 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword 
 } from "firebase/auth";
-import {
-  doc,
-  getDoc,
-  setDoc,
-  collection,
-  query,
-  where,
-  getDocs,
+import { 
+  doc, 
+  getDoc, 
+  setDoc, 
+  collection, 
+  query, 
+  where, 
+  getDocs, 
+  onSnapshot 
 } from "firebase/firestore";
 import { auth, db } from "../config/firebase";
+import { toast } from "react-hot-toast";
 
 const AuthContext = createContext();
 
@@ -32,25 +28,20 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isPublicMode, setIsPublicMode] = useState(false);
 
-  const register = useCallback(async (email, password, name) => {
+  // 1. GENERIC REGISTER
+  const register = useCallback(async (email, password, name, role = "admin") => {
     try {
-      const userCredential = await createUserWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await setDoc(doc(db, "users", userCredential.user.uid), {
         uid: userCredential.user.uid,
         email,
         name,
-        role: "admin",
+        role, 
+        status: 'active',
         createdAt: new Date(),
         lastLogin: null,
       });
-
       return userCredential;
     } catch (error) {
       console.error("Registration error:", error);
@@ -58,94 +49,75 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // 2. LOGIN (Staff)
   const login = useCallback(async (email, password) => {
     try {
-      const userCredential = await signInWithEmailAndPassword(
-        auth,
-        email,
-        password
-      );
-      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
+      // Firebase Auth Login
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Fetch User Role immediately
+      const userDocRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-      if (!userDoc.exists() || userDoc.data().role !== "admin") {
+      if (!userDoc.exists()) {
         await signOut(auth);
-        throw new Error("Access denied. Admin only.");
+        throw new Error("User profile not found in database.");
       }
 
-      await setDoc(
-        doc(db, "users", userCredential.user.uid),
-        {
-          lastLogin: new Date(),
-        },
-        { merge: true }
-      );
+      const data = userDoc.data();
 
-      setCurrentUser(userCredential.user);
-      setUserData(userDoc.data());
-      setIsPublicMode(false);
+      // Security Check
+      if (data.status === 'banned' || data.status === 'deleted') {
+        await signOut(auth);
+        throw new Error("Access Denied: Your account has been suspended.");
+      }
 
-      return userCredential;
+      // Update last login
+      await setDoc(userDocRef, { lastLogin: new Date() }, { merge: true });
+
+      // FORCE UPDATE STATE IMMEDIATELY
+      // This prevents the "double click" needed to login
+      setCurrentUser(user);
+      setUserData(data);
+      setLoading(false);
+
+      return { user, role: data.role };
+
     } catch (error) {
-      console.error("Login error:", error);
+      // If login fails, ensure we are logged out cleanly
+      await signOut(auth);
       throw error;
     }
   }, []);
 
+  // 3. STUDENT LOGIN
   const studentLogin = useCallback(async (dob, password) => {
     try {
-      // Query students collection for matching date of birth
       const studentsRef = collection(db, "students");
       const q = query(studentsRef, where("birthDate", "==", dob));
       const querySnapshot = await getDocs(q);
 
-      if (querySnapshot.empty) {
-        throw new Error("Student not found");
-      }
+      if (querySnapshot.empty) { throw new Error("Student not found"); }
 
-      // Get the first matching student
       const studentDoc = querySnapshot.docs[0];
       const studentData = studentDoc.data();
 
-      // Verify password
-      if (studentData.password !== password) {
-        throw new Error("Invalid credentials");
-      }
+      if (studentData.password !== password) { throw new Error("Invalid credentials"); }
 
-      // Create a proper Firebase-like user object
       const studentUser = {
         uid: studentDoc.id,
         email: studentData.email || "",
         displayName: studentData.name,
         role: "student",
-        // Add these properties to match Firebase user structure
-        providerData: [{
-          providerId: "password",
-          uid: studentDoc.id,
-          displayName: studentData.name,
-          email: studentData.email || "",
-          phoneNumber: studentData.phone || ""
-        }],
-        // Mock Firebase user methods
-        getIdToken: async () => "student-token",
-        reload: async () => {}
       };
 
-      // Store in localStorage for persistence
       localStorage.setItem('studentUser', JSON.stringify(studentUser));
-      localStorage.setItem('studentData', JSON.stringify({
-        ...studentData,
-        role: "student",
-        uid: studentDoc.id,
-      }));
+      localStorage.setItem('studentData', JSON.stringify({ ...studentData, role: "student", uid: studentDoc.id }));
 
-      // Set user data with student information
       setCurrentUser(studentUser);
-      setUserData({
-        ...studentData,
-        role: "student",
-        uid: studentDoc.id,
-      });
-      setIsPublicMode(false);
+      setUserData({ ...studentData, role: "student", uid: studentDoc.id });
+      setLoading(false);
 
       return studentUser;
     } catch (error) {
@@ -154,83 +126,83 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
+  // 4. LOGOUT
   const logout = useCallback(async () => {
     try {
       await signOut(auth);
-      // Clear both Firebase auth and student data
       localStorage.removeItem('studentUser');
       localStorage.removeItem('studentData');
       setCurrentUser(null);
       setUserData(null);
-      setIsPublicMode(true);
+      setLoading(false);
     } catch (error) {
       console.error("Logout error:", error);
       throw error;
     }
   }, []);
 
-  const enterPublicMode = useCallback(() => {
-    setIsPublicMode(true);
-  }, []);
-
-  const exitPublicMode = useCallback(() => {
-    setIsPublicMode(false);
-  }, []);
-
+  // 5. GLOBAL AUTH LISTENER (Restores Session on Refresh)
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeFirestore = null;
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        // Firebase user (admin)
-        try {
-          const userDoc = await getDoc(doc(db, "users", user.uid));
-          if (userDoc.exists() && userDoc.data().role === "admin") {
-            setCurrentUser(user);
-            setUserData(userDoc.data());
-            setIsPublicMode(false);
-          } else {
-            await logout();
-          }
-        } catch (error) {
-          console.error("Auth state error:", error);
-          await logout();
-        }
-      } else {
-        // Check if we have a student in localStorage
-        const studentUser = localStorage.getItem('studentUser');
-        const studentData = localStorage.getItem('studentData');
+        // User is logged in via Firebase (Session Persisted)
+        // We MUST fetch their data to confirm role
         
-        if (studentUser && studentData) {
-          setCurrentUser(JSON.parse(studentUser));
-          setUserData(JSON.parse(studentData));
-          setIsPublicMode(false);
+        const userDocRef = doc(db, "users", user.uid);
+        
+        unsubscribeFirestore = onSnapshot(userDocRef, (docSnapshot) => {
+          if (docSnapshot.exists()) {
+            const data = docSnapshot.data();
+
+            if (data.status === 'banned' || data.status === 'deleted') {
+               signOut(auth);
+               setCurrentUser(null);
+               setUserData(null);
+               return;
+            }
+
+            setCurrentUser(user);
+            setUserData(data);
+          } else {
+             // User exists in Auth but not in DB (Data corruption)
+             console.warn("User profile missing. Logging out.");
+             signOut(auth);
+             setCurrentUser(null);
+             setUserData(null);
+          }
+          setLoading(false);
+        }, (err) => {
+          console.error("Firestore Error:", err);
+          setLoading(false);
+        });
+
+      } else {
+        // No Firebase User - Check for Student in LocalStorage
+        if (unsubscribeFirestore) unsubscribeFirestore();
+
+        const storedStudent = localStorage.getItem('studentUser');
+        const storedStudentData = localStorage.getItem('studentData');
+
+        if (storedStudent && storedStudentData) {
+          setCurrentUser(JSON.parse(storedStudent));
+          setUserData(JSON.parse(storedStudentData));
         } else {
           setCurrentUser(null);
           setUserData(null);
-          setIsPublicMode(true);
         }
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
-  }, [logout]);
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeFirestore) unsubscribeFirestore();
+    };
+  }, []);
 
-  const value = {
-    currentUser,
-    userData,
-    loading,
-    isPublicMode,
-    enterPublicMode,
-    exitPublicMode,
-    register,
-    login,
-    studentLogin,
-    logout,
-  };
+  const value = { currentUser, userData, loading, register, login, studentLogin, logout };
 
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }

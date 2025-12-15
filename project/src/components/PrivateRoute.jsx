@@ -1,20 +1,33 @@
-import { useAuth } from '../contexts/AuthContext';
-import { Navigate, Outlet } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import LoadingSpinner from './LoadingSpinner';
 
-export default function ProtectedRoute() {
+export default function ProtectedRoute({ requiredRole }) {
   const { currentUser, userData, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-      </div>
-    );
+    return <LoadingSpinner fullScreen />;
   }
 
-  if (!currentUser || userData?.role !== 'admin') {
-    return <Navigate to="/login" replace />;
+  // 1. Not Authenticated? -> Login Page
+  if (!currentUser) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
+  // 2. Authenticated but Data not loaded yet? -> Wait (Spinner)
+  // This prevents race conditions where user exists but role is undefined
+  if (!userData) {
+     return <LoadingSpinner fullScreen />;
+  }
+
+  // 3. Wrong Role? -> Home Page
+  // Note: We perform this check only if a requiredRole is specified
+  if (requiredRole && userData.role !== requiredRole) {
+    console.warn(`Access Denied: User is ${userData.role}, required ${requiredRole}`);
+    return <Navigate to="/" replace />;
+  }
+
+  // 4. Authorized -> Render content
   return <Outlet />;
 }

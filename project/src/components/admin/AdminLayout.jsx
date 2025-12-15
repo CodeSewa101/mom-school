@@ -339,17 +339,17 @@ import {
   Menu,
   X,
   LogOut,
-  BookOpen,
   Calendar,
   DollarSign,
   FileText,
   Award,
   Clock,
+  Database,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../common/LoadingSpinner";
 
-// Memoize menu items to prevent recreation on every render
+// Memoize menu items
 const getAdminMenuItems = () => [
   {
     name: "Dashboard",
@@ -381,7 +381,16 @@ const getAdminMenuItems = () => [
     bgColor: "bg-purple-50",
     textColor: "text-purple-700",
   },
-
+  {
+    name: "Data Entry Admins",
+    path: "/admin/data-entry-admins",
+    icon: Database,
+    color: "from-cyan-500 to-cyan-600",
+    hoverColor: "hover:from-cyan-600 hover:to-cyan-700",
+    iconColor: "text-cyan-100",
+    bgColor: "bg-cyan-50",
+    textColor: "text-cyan-700",
+  },
   {
     name: "Attendance",
     path: "/admin/attendance",
@@ -413,14 +422,14 @@ const getAdminMenuItems = () => [
     textColor: "text-emerald-700",
   },
   {
-    name: "Student Fees", // NEW MENU ITEM
+    name: "Student Fees", 
     path: "/admin/student-fees",
-    icon: DollarSign, // You might want a different icon to distinguish it
-    color: "from-emerald-500 to-emerald-600",
-    hoverColor: "hover:from-emerald-600 hover:to-emerald-700",
-    iconColor: "text-emerald-100",
-    bgColor: "bg-emerald-50",
-    textColor: "text-emerald-700",
+    icon: DollarSign, 
+    color: "from-teal-500 to-teal-600",
+    hoverColor: "hover:from-teal-600 hover:to-teal-700",
+    iconColor: "text-teal-100",
+    bgColor: "bg-teal-50",
+    textColor: "text-teal-700",
   },
   {
     name: "Timetable",
@@ -476,31 +485,29 @@ const getAdminMenuItems = () => [
 
 export default function AdminLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const { currentUser, userData, logout } = useAuth();
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const { currentUser, userData, loading, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Memoize menu items
   const adminMenuItems = useMemo(() => getAdminMenuItems(), []);
 
-  // Check authentication and authorization
+  // Strict Security Check
   useEffect(() => {
-    if (!currentUser) {
-      navigate("/login");
-      return;
-    }
+    if (!loading) {
+      if (!currentUser) {
+        navigate("/login");
+        return;
+      }
 
-    if (userData) {
-      if (userData.role !== "admin") {
-        navigate("/");
+      if (userData?.role !== "admin") {
+        navigate("/"); 
       } else {
-        setLoading(false);
+        setIsAuthorized(true);
       }
     }
-  }, [currentUser, userData, navigate]);
+  }, [currentUser, userData, loading, navigate]);
 
-  // Close sidebar when route changes on mobile
   useEffect(() => {
     setSidebarOpen(false);
   }, [location]);
@@ -524,28 +531,18 @@ export default function AdminLayout() {
     [location.pathname]
   );
 
-  if (loading) {
+  if (loading || !isAuthorized) {
     return <LoadingSpinner fullScreen />;
-  }
-
-  // Only show sidebar if user is admin
-  if (userData?.role !== "admin") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
-        <Outlet />
-      </div>
-    );
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex">
-      {/* Sidebar - Only shown to admin users */}
+      {/* Sidebar - Desktop */}
       <div
         className={`fixed inset-y-0 left-0 z-50 w-20 lg:w-64 bg-gradient-to-b from-indigo-800 to-indigo-900 shadow-xl transform ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         } transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 flex flex-col`}
       >
-        {/* Sidebar Header - Fixed */}
         <div className="flex items-center justify-between h-16 px-4 lg:px-6 border-b border-indigo-700 flex-shrink-0">
           <div className="flex items-center space-x-2">
             <div className="p-2 bg-white rounded-lg">
@@ -558,13 +555,24 @@ export default function AdminLayout() {
           <button
             onClick={() => setSidebarOpen(false)}
             className="lg:hidden text-white hover:text-gray-200"
-            aria-label="Close sidebar"
           >
             <X className="h-6 w-6" />
           </button>
         </div>
 
-        {/* Sidebar Navigation - Scrollable */}
+        {/* User Info */}
+        <div className="px-4 py-4 border-b border-indigo-700 bg-indigo-900/50 hidden lg:block">
+          <div className="flex items-center space-x-3">
+            <div className="h-8 w-8 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+              {userData?.name?.charAt(0) || "A"}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-sm font-medium text-white truncate">{userData?.name || "Administrator"}</p>
+              <p className="text-xs text-indigo-300 truncate">{userData?.email}</p>
+            </div>
+          </div>
+        </div>
+
         <div className="flex-1 flex flex-col min-h-0">
           <nav className="flex-1 px-2 lg:px-3 py-6 overflow-y-auto">
             <div className="space-y-1">
@@ -582,7 +590,6 @@ export default function AdminLayout() {
                         : `text-indigo-100 hover:bg-gradient-to-r ${item.color} hover:text-white hover:shadow-md`
                     }`}
                     title={item.name}
-                    aria-current={active ? "page" : undefined}
                   >
                     <div
                       className={`p-2 rounded-lg ${
@@ -602,13 +609,10 @@ export default function AdminLayout() {
             </div>
           </nav>
 
-          {/* Logout Button - Fixed at bottom */}
           <div className="px-2 lg:px-3 pb-6 border-t border-indigo-700 flex-shrink-0">
             <button
               onClick={handleLogout}
               className="flex items-center w-full p-3 lg:px-4 lg:py-3 text-red-100 rounded-xl hover:bg-gradient-to-r hover:from-red-500 hover:to-red-600 hover:text-white transition-all group mt-4"
-              title="Logout"
-              aria-label="Logout"
             >
               <div className="p-2 rounded-lg bg-indigo-700/50 group-hover:bg-white/20">
                 <LogOut className="h-5 w-5 mx-auto lg:mr-3 lg:ml-0" />
@@ -621,24 +625,20 @@ export default function AdminLayout() {
         </div>
       </div>
 
-      {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
           onClick={() => setSidebarOpen(false)}
-          aria-hidden="true"
         />
       )}
 
       {/* Main Content */}
       <div className="flex-1 lg:ml-0">
-        {/* Mobile Header */}
         <div className="lg:hidden bg-white shadow-md border-b border-gray-200">
           <div className="flex items-center justify-between h-16 px-4">
             <button
               onClick={() => setSidebarOpen(true)}
               className="p-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700"
-              aria-label="Open sidebar"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -652,7 +652,6 @@ export default function AdminLayout() {
           </div>
         </div>
 
-        {/* Page Content */}
         <main className="flex-1 p-4 lg:p-6">
           <div className="bg-white rounded-2xl shadow-sm p-4 lg:p-6 min-h-[calc(100vh-120px)]">
             <Outlet />

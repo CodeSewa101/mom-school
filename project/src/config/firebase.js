@@ -3,7 +3,7 @@ import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-const firebaseConfig = {
+export const firebaseConfig = {
   // Add your Firebase config here
   apiKey: "AIzaSyDlyySCrr1FRylVzdcUhfTQ-EKyy-pgIas",
   authDomain: "school-managementsys.firebaseapp.com",
