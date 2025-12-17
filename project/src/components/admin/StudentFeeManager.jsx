@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { db } from "../../config/firebase";
 import {
   collection,
@@ -9,8 +10,10 @@ import {
   addDoc,
   serverTimestamp,
 } from "firebase/firestore";
+import { toast } from "react-hot-toast";
 
 const StudentFeeManager = () => {
+  const navigate = useNavigate();
   const [students, setStudents] = useState([]);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [feeStructures, setFeeStructures] = useState([]);
@@ -102,7 +105,7 @@ const StudentFeeManager = () => {
     return strClass;
   };
 
-  // Enhanced fee structure fetching with improved class matching
+  // Enhanced fee structure fetching
   useEffect(() => {
     if (!selectedStudent) return;
 
@@ -113,47 +116,45 @@ const StudentFeeManager = () => {
         const studentClass = selectedStudent.class?.toString().trim();
         const normalizedStudentClass = normalizeClass(studentClass);
 
-        console.log(
-          "Fetching fees for class:",
-          studentClass,
-          "Normalized:",
-          normalizedStudentClass
-        );
-
         let feeStructuresData = [];
         let foundWithMethod = "";
 
         // Method 1: Try exact match first
         try {
-          const feeStructuresQuery = query(
-            collection(db, "fees"),
-            where("class", "==", studentClass) || where("class", "==", Number(studentClass))
+          const q1 = query(collection(db, "fees"), where("class", "==", studentClass));
+          const snap1 = await getDocs(q1);
 
-          );
-          const feeStructuresSnapshot = await getDocs(feeStructuresQuery);
-
-          if (!feeStructuresSnapshot.empty) {
-            feeStructuresData = feeStructuresSnapshot.docs.map((doc) => ({
-              id: doc.id,
-              ...doc.data(),
-            }));
-            foundWithMethod = "exact match";
+          if (!snap1.empty) {
+            feeStructuresData = snap1.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            foundWithMethod = "exact string match";
           }
         } catch (error) {
-          console.log("Exact match query failed, trying alternatives");
+          console.log("Exact match queries failed", error);
         }
 
-        // Method 2: Try normalized match
+        // Method 2: Try number match
+        if (feeStructuresData.length === 0 && !isNaN(studentClass)) {
+            try {
+                const q2 = query(collection(db, "fees"), where("class", "==", Number(studentClass)));
+                const snap2 = await getDocs(q2);
+                if (!snap2.empty) {
+                    feeStructuresData = snap2.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    foundWithMethod = "exact number match";
+                }
+            } catch(e) { console.log(e); }
+        }
+
+        // Method 3: Try normalized match
         if (feeStructuresData.length === 0 && normalizedStudentClass) {
           try {
-            const feeStructuresQuery = query(
+            const q3 = query(
               collection(db, "fees"),
               where("class", "==", normalizedStudentClass)
             );
-            const feeStructuresSnapshot = await getDocs(feeStructuresQuery);
+            const snap3 = await getDocs(q3);
 
-            if (!feeStructuresSnapshot.empty) {
-              feeStructuresData = feeStructuresSnapshot.docs.map((doc) => ({
+            if (!snap3.empty) {
+              feeStructuresData = snap3.docs.map((doc) => ({
                 id: doc.id,
                 ...doc.data(),
               }));
@@ -164,29 +165,7 @@ const StudentFeeManager = () => {
           }
         }
 
-        // Method 3: Try number conversion if still no results
-        if (feeStructuresData.length === 0 && !isNaN(normalizedStudentClass)) {
-          try {
-            const feeStructuresQuery = query(
-              collection(db, "fees"),
-              where("class", "==", Number(normalizedStudentClass))
-            );
-            const feeStructuresSnapshot = await getDocs(feeStructuresQuery);
-
-            if (!feeStructuresSnapshot.empty) {
-              feeStructuresData = feeStructuresSnapshot.docs.map((doc) => ({
-                id: doc.id,
-                ...doc.data(),
-              }));
-              foundWithMethod = "number conversion";
-            }
-          } catch (error) {
-            console.log("Number conversion query failed");
-          }
-        }
-
-        // Method 4: Final fallback - client-side filtering with normalization
-        // Method 4: Final fallback - normalize both sides and compare loosely
+        // Method 4: Client-side fallback
         if (feeStructuresData.length === 0) {
           try {
             const allFeesSnapshot = await getDocs(collection(db, "fees"));
@@ -211,11 +190,9 @@ const StudentFeeManager = () => {
           }
         }
 
-
         setFeeStructures(feeStructuresData);
         setDebugInfo(
-          `Found ${feeStructuresData.length} fees using: ${foundWithMethod || "no method worked"
-          }`
+          `Found ${feeStructuresData.length} fees using: ${foundWithMethod || "no method worked"}`
         );
 
         // Fetch fee payments for the student
@@ -273,40 +250,36 @@ const StudentFeeManager = () => {
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
 
+    if (!selectedStudent) {
+        toast.error("No student selected");
+        return;
+    }
+
     try {
+      // FIX: Use `rollNo` from selectedStudent, fallback to empty string if undefined
+      const rollNumber = selectedStudent.rollNo || selectedStudent.rollNumber || "";
+
       // Create a new payment record
-      await addDoc(collection(db, "feePayments"), {
+      const newPayment = {
         studentId: selectedStudent.id,
-        studentName: selectedStudent.name,
-        rollNumber: selectedStudent.rollNumber,
-        class: selectedStudent.class,
+        studentName: selectedStudent.name || "",
+        rollNumber: rollNumber, // Corrected field mapping
+        class: selectedStudent.class || "",
         section: selectedStudent.section || "",
-        amount: parseFloat(paymentData.amount),
+        amount: parseFloat(paymentData.amount) || 0,
         paymentDate: new Date(paymentData.paymentDate),
-        paymentMode: paymentData.paymentMode,
-        receiptNumber: paymentData.receiptNumber,
-        remarks: paymentData.remarks,
+        paymentMode: paymentData.paymentMode || "cash",
+        receiptNumber: paymentData.receiptNumber || `REC-${Date.now()}`,
+        remarks: paymentData.remarks || "",
         status: "paid",
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-      });
+      };
 
-      // Refresh the data
-      const feePaymentsQuery = query(
-        collection(db, "feePayments"),
-        where("studentId", "==", selectedStudent.id),
-        orderBy("paymentDate", "desc")
-      );
-      const feePaymentsSnapshot = await getDocs(feePaymentsQuery);
-      const feePaymentsData = feePaymentsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-        paymentDate: doc.data().paymentDate?.toDate() || null,
-        dueDate: doc.data().dueDate?.toDate() || null,
-      }));
-      setFeePayments(feePaymentsData);
+      const docRef = await addDoc(collection(db, "feePayments"), newPayment);
 
-      // Reset form and close modal
+      // Close modal and reset form
+      setShowPaymentModal(false);
       setPaymentData({
         amount: "",
         paymentDate: new Date().toISOString().split("T")[0],
@@ -314,12 +287,20 @@ const StudentFeeManager = () => {
         receiptNumber: "",
         remarks: "",
       });
-      setShowPaymentModal(false);
 
-      alert("Payment recorded successfully!");
+      toast.success("Payment recorded successfully!");
+
+      // Navigate to Payment Receipt page
+      navigate("/admin/payment-receipt", { 
+        state: { 
+            payment: { ...newPayment, id: docRef.id },
+            view: 'receipt'
+        } 
+      });
+
     } catch (error) {
       console.error("Error recording payment:", error);
-      alert("Error recording payment. Please try again.");
+      toast.error(`Error recording payment: ${error.message}`);
     }
   };
 
@@ -368,7 +349,7 @@ const StudentFeeManager = () => {
             <option value="">Select a student</option>
             {students.map((student) => (
               <option key={student.id} value={student.id}>
-                {student.rollNumber} - {student.name} - Class {student.class}
+                {student.rollNo || student.rollNumber} - {student.name} - Class {student.class}
                 {student.section ? ` (Section ${student.section})` : ""}
               </option>
             ))}
@@ -398,7 +379,7 @@ const StudentFeeManager = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <p className="text-sm text-gray-600">Roll Number</p>
-                  <p className="font-medium">{selectedStudent.rollNumber}</p>
+                  <p className="font-medium">{selectedStudent.rollNo || selectedStudent.rollNumber || "N/A"}</p>
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Name</p>
@@ -711,6 +692,7 @@ const StudentFeeManager = () => {
                         receiptNumber: e.target.value,
                       })
                     }
+                    placeholder="Leave empty to auto-generate"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md"
                   />
                 </div>
@@ -742,7 +724,7 @@ const StudentFeeManager = () => {
                     type="submit"
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
-                    Record Payment
+                    Record & View Receipt
                   </button>
                 </div>
               </form>

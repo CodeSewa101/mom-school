@@ -7,15 +7,14 @@ import {
   Calendar,
   UserCheck,
   Bell,
-  Camera,
-  BookOpen
+  Camera
 } from 'lucide-react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 
 export default function TeacherDashboard() {
-  const { userData } = useAuth();
+  const { userData, currentUser } = useAuth();
   const [stats, setStats] = useState({
     myStudents: 0,
     attendanceToday: 0,
@@ -25,37 +24,69 @@ export default function TeacherDashboard() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchTeacherStats();
-  }, [userData]);
+    if (userData && currentUser) {
+      fetchTeacherStats();
+    }
+  }, [userData, currentUser]);
 
   const fetchTeacherStats = async () => {
     try {
+      const assignedClass = userData?.assignedClass || userData?.class;
+      
       // 1. Fetch Students in Teacher's assigned class
-      // Note: This relies on userData having 'assignedClass' or similar field
-      // If not yet implemented, it defaults to showing 0 or all students
-      let studentsQuery = collection(db, 'students');
-      
-      if (userData?.assignedClass) {
-        studentsQuery = query(collection(db, 'students'), where('class', '==', userData.assignedClass));
+      let myStudents = 0;
+      if (assignedClass) {
+        const studentsQuery = query(
+          collection(db, 'students'), 
+          where('class', '==', assignedClass)
+        );
+        const studentsSnapshot = await getDocs(studentsQuery);
+        myStudents = studentsSnapshot.size;
       }
-      
-      const studentsSnapshot = await getDocs(studentsQuery);
-      const myStudents = studentsSnapshot.size;
 
-      // 2. Fetch Attendance Count for Today (Mock calculation for now)
-      // In production, query the 'attendance' collection for today's date & class
-      const attendanceToday = Math.floor(myStudents * 0.95); // Simulating 95% attendance
+      // 2. Fetch Attendance Count for Today
+      // Counts documents in 'attendance' where date is today, class matches, and status is present
+      const todayStr = new Date().toISOString().split('T')[0];
+      let attendanceToday = 0;
+      
+      if (assignedClass) {
+        try {
+          const attendanceQuery = query(
+            collection(db, 'attendance'),
+            where('class', '==', assignedClass),
+            where('date', '==', todayStr),
+            where('status', '==', 'Present')
+          );
+          const attSnapshot = await getDocs(attendanceQuery);
+          attendanceToday = attSnapshot.size;
+        } catch (err) {
+          console.log("Attendance collection might be empty or structured differently", err);
+        }
+      }
 
       // 3. Fetch Homework uploaded by this teacher
-      // const homeworkQuery = query(collection(db, 'homework'), where('teacherId', '==', userData.uid));
-      // const homeworkSnapshot = await getDocs(homeworkQuery);
-      const homeworkSent = 12; // Mock data for display
+      const homeworkQuery = query(
+        collection(db, 'homework'), 
+        where('teacherId', '==', currentUser.uid)
+      );
+      const homeworkSnapshot = await getDocs(homeworkQuery);
+      const homeworkSent = homeworkSnapshot.size;
+
+      // 4. Fetch Pending Leave Requests
+      // Counts leaves where status is 'pending_teacher'
+      const leavesQuery = query(
+        collection(db, 'leaves'), 
+        where('status', '==', 'pending_teacher')
+      );
+      const leavesSnapshot = await getDocs(leavesQuery);
+      // Optional: Filter client-side if you want only leaves from the teacher's specific class
+      const leavesPending = leavesSnapshot.size;
 
       setStats({
         myStudents,
         attendanceToday,
         homeworkSent,
-        leavesPending: 2 // Mock: Number of student leave requests pending review
+        leavesPending
       });
 
       setLoading(false);
@@ -72,7 +103,7 @@ export default function TeacherDashboard() {
       icon: Users,
       cardBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
       textColor: 'text-white',
-      subText: userData?.assignedClass ? `Class ${userData.assignedClass}` : 'Assigned Class'
+      subText: userData?.assignedClass || userData?.class ? `Class ${userData.assignedClass || userData.class}` : 'No Class Assigned'
     },
     {
       title: 'Present Today',
@@ -80,7 +111,7 @@ export default function TeacherDashboard() {
       icon: UserCheck,
       cardBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
       textColor: 'text-white',
-      subText: `${stats.myStudents - stats.attendanceToday} Absent`
+      subText: `${stats.myStudents > 0 ? ((stats.attendanceToday / stats.myStudents) * 100).toFixed(0) : 0}% Attendance`
     },
     {
       title: 'Homework Sent',
@@ -88,7 +119,7 @@ export default function TeacherDashboard() {
       icon: FileText,
       cardBg: 'bg-gradient-to-br from-purple-500 to-purple-600',
       textColor: 'text-white',
-      subText: 'This Month'
+      subText: 'Total Uploads'
     },
     {
       title: 'Leave Requests',
@@ -203,22 +234,23 @@ export default function TeacherDashboard() {
           </div>
 
           <div className="space-y-4">
-            {/* Mock Timetable Items */}
+            {/* Note: This is still mock data for the preview list as real timetable parsing is complex for a preview widget. 
+                Ideally, this should query the 'timetables' collection for today's day. */}
             {[
-              { time: "09:00 AM", subject: "Mathematics", class: "Class 10-A", room: "Room 101", status: "Completed" },
-              { time: "10:30 AM", subject: "Physics", class: "Class 9-B", room: "Lab 2", status: "Upcoming" },
-              { time: "01:00 PM", subject: "Mathematics", class: "Class 10-B", room: "Room 102", status: "Upcoming" },
+              { time: "09:00 AM", subject: "Period 1", class: userData?.assignedClass || "N/A", status: "Active" },
+              { time: "10:00 AM", subject: "Period 2", class: userData?.assignedClass || "N/A", status: "Upcoming" },
+              { time: "11:00 AM", subject: "Period 3", class: userData?.assignedClass || "N/A", status: "Upcoming" },
             ].map((slot, index) => (
               <div key={index} className="flex items-center p-4 border rounded-xl hover:border-indigo-200 transition-colors bg-gray-50 hover:bg-white">
                 <div className="w-24 flex-shrink-0 text-center border-r pr-4 mr-4">
                   <span className="block font-bold text-gray-800">{slot.time}</span>
-                  <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${slot.status === 'Completed' ? 'bg-gray-200 text-gray-600' : 'bg-green-100 text-green-700'}`}>
+                  <span className={`text-xs px-2 py-1 rounded-full mt-1 inline-block ${index === 0 ? 'bg-green-100 text-green-700' : 'bg-gray-200 text-gray-600'}`}>
                     {slot.status}
                   </span>
                 </div>
                 <div>
                   <h3 className="font-bold text-indigo-900">{slot.subject}</h3>
-                  <p className="text-sm text-gray-600">{slot.class} • {slot.room}</p>
+                  <p className="text-sm text-gray-600">{slot.class}</p>
                 </div>
               </div>
             ))}

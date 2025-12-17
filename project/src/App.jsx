@@ -30,10 +30,12 @@ import DataEntryManagement from "./components/admin/DataEntryManagement";
 import NotificationManagement from "./components/admin/NotificationManagement";
 import PhotoGallery from "./components/admin/PhotoGallery";
 import StudentFeeManager from "./components/admin/StudentFeeManager";
+import PaymentReceipt from "./pages/PaymentReceipt"; // NEW IMPORT
 
 // --- TEACHER IMPORTS ---
 import TeacherLayout from "./components/teacher/TeacherLayout";
 import TeacherDashboard from "./components/teacher/TeacherDashboard";
+import LeaveManagement from "./components/teacher/LeaveManagement"; // Added from previous steps
 
 // --- DATA ENTRY IMPORTS ---
 import DataEntryLayout from "./components/dataEntry/DataEntryLayout";
@@ -50,6 +52,8 @@ import StudentLayout from "./components/student/StudentLayout";
 import StudentDashboard from "./components/student/StudentDashboard";
 import ReportCardView from "./pages/ReportCardView";
 import StudentFeeView from "./components/student/StudentFeeView";
+import StudentLeave from "./components/student/LeaveApplication"; // Added from previous steps
+import AdminLeave from "./components/admin/LeaveApproval"; // Added from previous steps
 
 function App() {
   return (
@@ -144,9 +148,12 @@ function App() {
               <Route path="timetable" element={<Timetable />} />
               <Route path="homework" element={<HomeworkPage />} />
               <Route path="attendance" element={<AttendancePage />} />
+              <Route path="leaves" element={<AdminLeave />} />
               <Route path="fees" element={<FeeManagement />} />
               <Route path="student-fees" element={<StudentFeeManager />} />
               <Route path="results" element={<ResultsPage />} />
+              {/* NEW ROUTE FOR RECEIPT */}
+              <Route path="payment-receipt" element={<PaymentReceipt />} />
             </Route>
           </Route>
 
@@ -158,7 +165,7 @@ function App() {
               <Route path="homework" element={<HomeworkPage />} />
               <Route path="timetable" element={<Timetable />} />
               <Route path="gallery" element={<PhotoGallery />} />
-              <Route path="leaves" element={<div className="p-10 text-center text-gray-500">Leave Management Module</div>} />
+              <Route path="leaves" element={<LeaveManagement />} />
             </Route>
           </Route>
 
@@ -179,6 +186,7 @@ function App() {
               <Route index element={<StudentDashboard />} />
               <Route path="report-card" element={<ReportCardView />} />
               <Route path="fees" element={<StudentFeeView />} />
+              <Route path="leaves" element={<StudentLeave />} />
             </Route>
           </Route>
 

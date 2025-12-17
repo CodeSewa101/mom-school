@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import {Link} from "react-router-dom";
+import { Link } from "react-router-dom";
 import { 
   Users, 
   GraduationCap, 
@@ -38,28 +38,22 @@ export default function AdminDashboard() {
     };
     
     checkBirthdayVisibility();
-    
-    // Set up interval to check every minute
     const interval = setInterval(checkBirthdayVisibility, 60000);
-    
     return () => clearInterval(interval);
   }, []);
 
   const fetchDashboardData = async () => {
     try {
-      // Fetch students
+      // 1. Fetch Students
       const studentsSnapshot = await getDocs(collection(db, 'students'));
       const totalStudents = studentsSnapshot.size;
 
-      // Get today's date in MM-DD format for comparison
+      // 2. Calculate Birthdays
       const today = format(new Date(), 'MM-dd');
-      
-      // Find students with birthdays today
       const todaysBirthdays = [];
       studentsSnapshot.forEach((doc) => {
         const data = doc.data();
         if (data.birthDate) {
-          // Parse the birthDate (assuming it's stored as a string in YYYY-MM-DD format)
           const birthDate = new Date(data.birthDate);
           const birthMonthDay = format(birthDate, 'MM-dd');
           
@@ -75,12 +69,23 @@ export default function AdminDashboard() {
         }
       });
 
-      // Fetch teachers
+      // 3. Fetch Teachers
       const teachersSnapshot = await getDocs(collection(db, 'teachers'));
       const totalTeachers = teachersSnapshot.size;
 
-      // Calculate total fees (placeholder - would need fee records)
-      const totalFees = 125000; // Mock data
+      // 4. Calculate Total Fees Collected (Real Data)
+      let totalFees = 0;
+      try {
+        const paymentsSnapshot = await getDocs(collection(db, 'feePayments'));
+        paymentsSnapshot.forEach(doc => {
+          const data = doc.data();
+          if (data.status === 'paid' && data.amount) {
+            totalFees += Number(data.amount);
+          }
+        });
+      } catch (err) {
+        console.error("Error fetching fees:", err);
+      }
 
       setStats({
         totalStudents,
@@ -90,7 +95,6 @@ export default function AdminDashboard() {
       });
 
       setBirthdayStudents(todaysBirthdays);
-
       setLoading(false);
     } catch (error) {
       console.error('Error fetching dashboard data:', error);
@@ -98,7 +102,6 @@ export default function AdminDashboard() {
     }
   };
 
-  // Updated stat cards with different colors
   const statCards = [
     {
       title: 'Total Students',
@@ -106,7 +109,7 @@ export default function AdminDashboard() {
       icon: Users,
       cardBg: 'bg-gradient-to-br from-blue-500 to-blue-600',
       textColor: 'text-white',
-      change: '+12%',
+      change: 'Active',
       changeColor: 'text-blue-200'
     },
     {
@@ -115,7 +118,7 @@ export default function AdminDashboard() {
       icon: GraduationCap,
       cardBg: 'bg-gradient-to-br from-emerald-500 to-emerald-600',
       textColor: 'text-white',
-      change: '+3%',
+      change: 'Staff',
       changeColor: 'text-emerald-200'
     },
     {
@@ -124,7 +127,7 @@ export default function AdminDashboard() {
       icon: DollarSign,
       cardBg: 'bg-gradient-to-br from-amber-500 to-amber-600',
       textColor: 'text-white',
-      change: '+18%',
+      change: 'Revenue',
       changeColor: 'text-amber-200'
     },
     {
@@ -224,7 +227,6 @@ export default function AdminDashboard() {
                 
                 {birthdayStudents.length > 0 ? (
                   <div className="space-y-4">
-                    {/* Special highlighted birthday banner */}
                     <div className="bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl p-5 text-white text-center mb-6">
                       <Cake className="h-10 w-10 mx-auto mb-2" />
                       <h3 className="text-xl font-bold mb-1">Happy Birthday!</h3>
@@ -253,7 +255,6 @@ export default function AdminDashboard() {
                             </div>
                           </div>
                           
-                          {/* Birthday Wish Section */}
                           <div className="bg-white p-3 rounded-lg border border-purple-200">
                             <div className="flex items-center justify-between mb-2">
                               <span className="text-xs font-medium text-purple-700">Birthday Wish</span>
