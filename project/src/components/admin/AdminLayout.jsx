@@ -345,6 +345,7 @@ import {
   Award,
   Clock,
   Database,
+  ClipboardCheck
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import LoadingSpinner from "../common/LoadingSpinner";
@@ -400,6 +401,16 @@ const getAdminMenuItems = () => [
     iconColor: "text-rose-100",
     bgColor: "bg-rose-50",
     textColor: "text-rose-700",
+  },
+  {
+    name: "Leave Approvals",
+    path: "/admin/leaves",
+    icon: ClipboardCheck,
+    color: "from-amber-600 to-orange-600",
+    hoverColor: "hover:from-amber-700 hover:to-orange-700",
+    iconColor: "text-amber-100",
+    bgColor: "bg-amber-50",
+    textColor: "text-amber-700",
   },
   {
     name: "Exams & Results",
@@ -471,16 +482,18 @@ const getAdminMenuItems = () => [
     bgColor: "bg-violet-50",
     textColor: "text-violet-700",
   },
-  {
-    name: "Settings",
-    path: "/admin/settings",
-    icon: Settings,
-    color: "from-gray-500 to-gray-600",
-    hoverColor: "hover:from-gray-600 hover:to-gray-700",
-    iconColor: "text-gray-100",
-    bgColor: "bg-gray-50",
-    textColor: "text-gray-700",
-  },
+  // Setting page is yet to be implemented
+  // {
+  //   name: "Settings",
+  //   path: "/admin/settings",
+  //   icon: Settings,
+  //   color: "from-gray-500 to-gray-600",
+  //   hoverColor: "hover:from-gray-600 hover:to-gray-700",
+  //   iconColor: "text-gray-100",
+  //   bgColor: "bg-gray-50",
+  //   textColor: "text-gray-700",
+  // },
+  
 ];
 
 export default function AdminLayout() {

@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import StudentHeader from "./StudentHeader";
 import LoadingSpinner from "../common/LoadingSpinner";
-import { Home, FileText, CreditCard, LogOut, Menu, User } from "lucide-react";
+import { Home, FileText, CreditCard, LogOut, Menu, User, Calendar } from "lucide-react";
 import { Link } from "react-router-dom";
 
 export default function StudentLayout() {
@@ -88,6 +88,9 @@ export default function StudentLayout() {
               </Link>
               <Link to="/student/fees" className={`flex items-center px-4 py-3 rounded-xl transition-colors ${isActive('/student/fees') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
                 <CreditCard className="h-5 w-5 mr-3" /> Fee Status
+              </Link>
+              <Link to="/student/leaves" className={`flex items-center px-4 py-3 rounded-xl transition-colors ${isActive('/student/leaves') ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-gray-600 hover:bg-gray-50'}`}>
+                <Calendar className="h-5 w-5 mr-3" /> Leave Application
               </Link>
             </nav>
 
